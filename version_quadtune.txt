@@ -1,3 +1,9 @@
+commit 4694795925c68130ec3f92b5d9fbb5f8880694f4
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Sun Nov 23 23:33:46 2025 -0600
+
+    Updating the quadtune version file
+
 commit 30f88a03d256f61688c0421600145238296a9534
 Author: Vincent Larson <vlarson@users.noreply.github.com>
 Date:   Fri Nov 21 14:09:36 2025 -0600
@@ -81,19 +87,3 @@ Date:   Wed Oct 15 10:52:32 2025 -0500
     Turn off bootstrap sampling by default.
     
     For larson-group/clubb#910.
-
-commit fa6a696ee055246c6a9e6ff994d3a2eed7e77b82
-Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
-Date:   Wed Oct 15 10:34:40 2025 -0500
-
-    Add check if quadtune can recover fixes parameter (#7)
-    
-    * Added a optional and configurable check if quadtune can recover fixed parameters
-    
-    * fixed formatting
-    
-    * moved requirements.txt to top-level and changed READMEs accordingly.
-    
-    * changed github-actions workflow to use the new path of requirements.txt
-    
-    * Changed names and fixed errors according to the review
