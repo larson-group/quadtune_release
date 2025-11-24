@@ -1,3 +1,9 @@
+commit 1e5607fdbb54d827d01d9dc1a11a84737d192042
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Mon Nov 24 16:53:06 2025 -0600
+
+    Updating the quadtune version file
+
 commit 1a66002303bf8117b48753e6369a06fcb7519855
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Mon Nov 24 15:39:13 2025 -0600
@@ -79,9 +85,3 @@ Date:   Mon Oct 20 09:43:56 2025 -0500
     * redefined debug_levels and included beVerbose as a parameter in the config files
     
     * Added changes according to the review
-
-commit 2285dbf1f7d5e5b263f37c18ad7ab823b23e05d5
-Author: Vincent Larson <vlarson@users.noreply.github.com>
-Date:   Fri Oct 17 13:38:31 2025 -0500
-
-    Fix typo in top-level README regarding git lfs initialization
