@@ -1,3 +1,9 @@
+commit 1a66002303bf8117b48753e6369a06fcb7519855
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Mon Nov 24 15:39:13 2025 -0600
+
+    Updating the quadtune version file
+
 commit 4694795925c68130ec3f92b5d9fbb5f8880694f4
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Sun Nov 23 23:33:46 2025 -0600
@@ -79,11 +85,3 @@ Author: Vincent Larson <vlarson@users.noreply.github.com>
 Date:   Fri Oct 17 13:38:31 2025 -0500
 
     Fix typo in top-level README regarding git lfs initialization
-
-commit 49cf280a304942b08c70e9df51c9051749c758b9
-Author: vlarson <vlarson@uwm.edu>
-Date:   Wed Oct 15 10:52:32 2025 -0500
-
-    Turn off bootstrap sampling by default.
-    
-    For larson-group/clubb#910.
