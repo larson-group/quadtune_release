@@ -47,7 +47,7 @@ def config_core():
     doPiecewise = False
 
     # Flag to enable reading SST4K regional files
-    doCalcGenEig = False
+    doMaximizeRatio = False
     
 
     # Make varPrefixes a global variable so that it can be used in config_plots
@@ -206,7 +206,7 @@ def config_core():
      transformedParamsNames,
      defaultNcFilename, globTunedNcFilename,
      interactParamsNamesAndFilenames,
-     doCalcGenEig,
+     doMaximizeRatio,
      doPiecewise,
      reglrCoef, penaltyCoef, doBootstrapSampling,
      paramsNamesScalesAndSuffixes, folder_name,

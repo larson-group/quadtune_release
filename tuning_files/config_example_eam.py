@@ -49,7 +49,7 @@ def config_core():
     doCreatePlots = True
 
     # Flag to enable reading SST4K regional files
-    doCalcGenEig = True
+    doMaximizeRatio = True
 
     
 
@@ -602,7 +602,7 @@ def config_core():
      transformedParamsNames,
      defaultNcFilename, globTunedNcFilename,
      interactParamsNamesAndFilenames,
-     doCalcGenEig,
+     doMaximizeRatio,
      doPiecewise,
      reglrCoef, penaltyCoef, doBootstrapSampling,
      paramsNamesScalesAndSuffixes, folder_name,

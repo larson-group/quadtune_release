@@ -59,7 +59,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                paramsSolnNonlin,
                paramsSolnElastic, dnormlzdParamsSolnElastic,
                sensNcFilenames, sensNcFilenamesExt, defaultNcFilename,
-               dNormlzdMetricsGenEig, dNormlzdMetricsGenEigSST4K, normlzdSensMatrixPolySST4K,
+               MetricsMaxRatioParams, MetricsSST4KMaxRatioParams,
                createPlotType,
                reglrCoef, penaltyCoef, numMetrics,
                beVerbose,
@@ -947,40 +947,90 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
     if createPlotType['SST4KPanelGallery']:
 
         print("Creating SST4KPanelGallery . . .")
+            
 
-        minField = np.minimum.reduce([ np.min(dNormlzdMetricsGenEigSST4K),
-                                       np.min(dNormlzdMetricsGenEig)])
-        maxField = np.maximum.reduce([ np.max(dNormlzdMetricsGenEigSST4K),
-                                       np.max(dNormlzdMetricsGenEig)])
+        OptimizedSensOnlyPanels = np.empty((2,len(paramsNames)+1), dtype=object)
+        OptimizedSensCurvPanels = np.empty((2,len(paramsNames)+1), dtype=object)
 
-        
-        SST4KGenEigPanel = createMapPanel(dNormlzdMetricsGenEigSST4K, 600, 'SST4K Metrics Perturbation for maximizing Parameters', boxSize,
-                                           minField=minField, maxField=maxField)
-        GenEigPanel = createMapPanel(dNormlzdMetricsGenEig, 600, 'Metrics Perturbation for maximizing Parameters', boxSize,
-                                            minField=minField, maxField=maxField)
 
-        SensMatrixPanels = np.empty((2, len(paramsNames)), dtype=object)
+        minField = np.minimum.reduce([np.min(MetricsSST4KMaxRatioParams[0,0,:]),
+                                          np.min(MetricsSST4KMaxRatioParams[1,0,:]),
+                                          np.min(MetricsMaxRatioParams[0,0,:]),
+                                          np.min(MetricsMaxRatioParams[1,0,:])])
+        maxField = np.maximum.reduce([np.max(MetricsSST4KMaxRatioParams[0,0,:]),
+                                          np.max(MetricsSST4KMaxRatioParams[1,0,:]),
+                                          np.max(MetricsMaxRatioParams[0,0,:]),
+                                          np.max(MetricsMaxRatioParams[1,0,:])])
+
+        OptimizedSensOnlyPanels[0,0] = createMapPanel(
+                MetricsMaxRatioParams[0,0,:],
+                480,
+                f'Linear Metrics with all parameters',
+                boxSize,
+                minField=minField,
+                maxField=maxField)
+        OptimizedSensOnlyPanels[1,0] = createMapPanel(
+                MetricsSST4KMaxRatioParams[0,0,:],
+                480,
+                f'SST4K Linear Metrics with all parameters',
+                boxSize,
+                minField=minField,
+                maxField=maxField)
+        OptimizedSensCurvPanels[0,0] = createMapPanel(
+                MetricsMaxRatioParams[1,0,:],
+                480,
+                f'NonLinear Metrics with all parameters',
+                boxSize,
+                minField=minField,
+                maxField=maxField)
+        OptimizedSensCurvPanels[1,0] = createMapPanel(
+                MetricsSST4KMaxRatioParams[1,0,:],
+                480,
+                f'SST4K NonLinear Metrics with all parameters',
+                boxSize,
+                minField=minField,
+                maxField=maxField)
+
         for paramIdx, paramName in enumerate(paramsNames):
-
-            minField = np.minimum.reduce([ np.min(normlzdSensMatrixPoly[:, paramIdx]),
-                                       np.min(normlzdSensMatrixPolySST4K[:, paramIdx])])
-            maxField = np.maximum.reduce([ np.max(normlzdSensMatrixPoly[:, paramIdx]),
-                                       np.max(normlzdSensMatrixPolySST4K[:, paramIdx])])
-            SensMatrixPanels[0, paramIdx] = createMapPanel(
-                    normlzdSensMatrixPoly[:, paramIdx],
-                    600,
-                    f'Sensitivity Map for {paramName}',
+            minField = np.minimum.reduce([np.min(MetricsSST4KMaxRatioParams[0,paramIdx+1,:]),
+                                          np.min(MetricsSST4KMaxRatioParams[1,paramIdx+1,:]),
+                                          np.min(MetricsMaxRatioParams[0,paramIdx+1,:]),
+                                          np.min(MetricsMaxRatioParams[1,paramIdx+1,:])])
+            maxField = np.maximum.reduce([np.max(MetricsSST4KMaxRatioParams[0,paramIdx+1,:]),
+                                          np.max(MetricsSST4KMaxRatioParams[1,paramIdx+1,:]),
+                                          np.max(MetricsMaxRatioParams[0,paramIdx+1,:]),
+                                          np.max(MetricsMaxRatioParams[1,paramIdx+1,:])])
+            OptimizedSensOnlyPanels[0,paramIdx+1] = createMapPanel(
+                    MetricsMaxRatioParams[0,paramIdx+1,:],
+                    480,
+                    f'Linear Metrics for {paramName}',
                     boxSize,
                     minField=minField,
                     maxField=maxField)
-                
-            SensMatrixPanels[1,paramIdx] = createMapPanel(
-                    normlzdSensMatrixPolySST4K[:, paramIdx],
-                    600,
-                    f'SST4K Sensitivity Map for {paramName}',
+            
+            OptimizedSensOnlyPanels[1,paramIdx+1] = createMapPanel(
+                    MetricsSST4KMaxRatioParams[0,paramIdx+1,:],
+                    480,
+                    f'SST4K Linear Metrics for {paramName}',
                     boxSize,
                     minField=minField,
                     maxField=maxField)
+            
+            OptimizedSensCurvPanels[0,paramIdx+1] = createMapPanel(
+                    MetricsMaxRatioParams[1,paramIdx+1,:],
+                    480,
+                    f'NonLinear Metrics for {paramName}',
+                    boxSize,
+                    minField=minField,
+                    maxField=maxField)
+            OptimizedSensCurvPanels[1,paramIdx+1] = createMapPanel(
+                    MetricsSST4KMaxRatioParams[1,paramIdx+1,:],
+                    480,
+                    f'SST4K NonLinear Metrics for {paramName}',
+                    boxSize,
+                    minField=minField,
+                    maxField=maxField)
+            
 
 
 
@@ -1059,17 +1109,20 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
 
     if createPlotType["SST4KPanelGallery"]: 
 
-        dashboardChildren.append(html.H2(children="Generalized Eigenvalue metrics perturbation", style={'text-indent': '450px'}))
+        dashboardChildren.append(html.H2(children="Lin and NonLin maps for Ratio-maximizing parameters", style={'text-indent': '450px'}))
 
-        GenEigDccGraph = dcc.Graph(id="MaxMetricsFig", figure=GenEigPanel, config=downloadConfig)
-        GenEigSST4KDccGraph = dcc.Graph(id="SST4KMaxMetricsFig", figure=SST4KGenEigPanel, config=downloadConfig)
+        first_col = html.Div([dcc.Graph(id=f"Normal_lin_metrics_{i}", figure=fig, config=downloadConfig)
+                              for i, fig in enumerate(OptimizedSensOnlyPanels[0,:])])
+        second_col = html.Div([dcc.Graph(id=f"SST4K_lin_metrics_{i}", figure=fig, config=downloadConfig)
+                              for i, fig in enumerate(OptimizedSensOnlyPanels[1,:])])
         
-        left_col = html.Div([GenEigDccGraph] + [dcc.Graph(id=f"GenEigSensMatrixFig_{i}", figure=fig, config=downloadConfig)
-                              for i, fig in enumerate(SensMatrixPanels[0])],style={'width': '40%' })
-        right_col = html.Div([GenEigSST4KDccGraph] + [dcc.Graph(id=f"GenEigSensMatrixFigSST4K_{i}", figure=fig, config=downloadConfig)
-                              for i, fig in enumerate(SensMatrixPanels[1])],style={'width': '40%' })
+        third_col = html.Div([dcc.Graph(id=f"Normal_nonlin_metrics_{i}", figure=fig, config=downloadConfig)
+                              for i, fig in enumerate(OptimizedSensCurvPanels[0,:])])
+        fourth_col = html.Div([dcc.Graph(id=f"SST4K_nonlin_metrics_{i}", figure=fig, config=downloadConfig)
+                              for i, fig in enumerate(OptimizedSensCurvPanels[1,:])])
         
-        dashboardChildren.append(html.Div([left_col, right_col], style={'display': 'flex'}))
+        dashboardChildren.append(html.Div([first_col,second_col,third_col,fourth_col], style={'display': 'flex'}))
+
         
     if createPlotType['PcSensMap']:
         dashboardChildren.append(html.H2(children=mapVarName, style={'text-indent': '450px'}))
@@ -1629,9 +1682,17 @@ def createMapPanel(fieldToPlotCol,
         tickVals = [np.min(normlzdColorMatrix),
                     0.5*np.min(normlzdColorMatrix)+0.5*np.max(normlzdColorMatrix),
                     np.max(normlzdColorMatrix)]
-        tickText = [f"{-rangeField:.2f}",
-                    '0.0',
-                    f"{rangeField:.2f}"]
+        
+        if rangeField > 0.009:
+            tickText = [f"{-rangeField:.2f}",
+                        '0.0',
+                        f"{rangeField:.2f}"]
+        else:
+            tickText = [f"{-rangeField:.2e}",
+                        '0.0',
+                        f"{rangeField:.2e}"]
+            
+
         #if (maxField > np.abs(minField)):
         #    #tickVals = [0.5 * minField / rangeField + 0.5,
         #    #            0.25 * minField / rangeField + 0.75,
