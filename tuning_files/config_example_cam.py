@@ -62,7 +62,7 @@ def config_core():
     numBoxesInMap = np.rint( (360/boxSize) * (180/boxSize) )
     # numMetricsToTune includes all (e.g., 20x20 regions) and as many
     #   variables as we want to tune, up to all varPrefixes.
-    #numMetricsToTune = numBoxesInMap * len(varPrefixes)
+    #numMetricsToTune = numBoxesInMap * len(varPrefixes)  # Tune all variables in varPrefixes
     #numMetricsToTune = numBoxesInMap * (len(varPrefixes)-1)  # Omit a variable from tuning.
     numMetricsToTune = numBoxesInMap  # Only tune for first variable in varPrefixes
     numMetricsToTune = numMetricsToTune.astype(int)
