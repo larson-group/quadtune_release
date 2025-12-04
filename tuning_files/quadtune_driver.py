@@ -88,7 +88,7 @@ def main(args):
      paramsNamesScalesAndFilenames, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom, 
-     debug_level, chosen_delta_param, beVerbose) \
+     debug_level, recovery_test_dparam, beVerbose) \
     = \
         config_file.config_core()
     
@@ -227,8 +227,8 @@ def main(args):
                         normlzdInteractDerivs, interactIdxs)
 
     if debug_level > 0 :
-        chosen_delta_param = chosen_delta_param *  np.ones((len(paramsNames),1))
-        check_recovery_of_param_vals(debug_level, chosen_delta_param, normlzdCurvMatrix, normlzdSensMatrixPoly,\
+        recovery_test_dparam = recovery_test_dparam *  np.ones((len(paramsNames),1))
+        check_recovery_of_param_vals(debug_level, recovery_test_dparam, normlzdCurvMatrix, normlzdSensMatrixPoly,\
                                 doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix, numMetrics, normlzdInteractDerivs, interactIdxs,\
                                     metricsNames, metricsWeights, normMetricValsCol, magParamValsRow, defaultParamValsOrigRow, reglrCoef, penaltyCoef, beVerbose)
         
@@ -1655,7 +1655,7 @@ def calc_dimensional_param_vals(dnormlzdparams,magParamValsRow,defaultParamValsO
     """Compute the real parameter values from the normalized parameter biases"""
     return (dnormlzdparams.reshape((-1,1))* np.transpose(magParamValsRow) + np.transpose(defaultParamValsOrigRow))
 
-def check_recovery_of_param_vals(debug_level: int, chosen_delta_param: np.ndarray, normlzdCurvMatrix, 
+def check_recovery_of_param_vals(debug_level: int, recovery_test_dparam: np.ndarray, normlzdCurvMatrix, 
                             normlzdSensMatrixPoly, doPiecewise, normlzd_dpMid,
                             normlzdLeftSensMatrix, normlzdRightSensMatrix,
                             numMetrics, normlzdInteractDerivs, interactIdxs,
@@ -1663,10 +1663,10 @@ def check_recovery_of_param_vals(debug_level: int, chosen_delta_param: np.ndarra
                             magparamValsRow, defaultParamValsOrigRow, reglrCoef, penaltyCoef, beVerbose):
     """
     Check if quadtune can recover fixed parameters.
-    Calls fwdFnc using chosen_delta_param and tries to recover them using solveUsingNonLin
+    Calls fwdFnc using recovery_test_dparam and tries to recover them using solveUsingNonLin
     """
 
-    normlzdDefaultBiasesApproxNonlin = fwdFnc(chosen_delta_param, normlzdSensMatrixPoly, normlzdCurvMatrix, \
+    normlzdDefaultBiasesApproxNonlin = fwdFnc(recovery_test_dparam, normlzdSensMatrixPoly, normlzdCurvMatrix, \
                           doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix,\
                           numMetrics, normlzdInteractDerivs, interactIdxs)
     
@@ -1681,12 +1681,12 @@ def check_recovery_of_param_vals(debug_level: int, chosen_delta_param: np.ndarra
                                 normlzdRightSensMatrix, normlzdInteractDerivs, interactIdxs, reglrCoef, penaltyCoef)
     if beVerbose:
         print(f"\nStart test to check if quadtune can recover prescribed parameter deltas . . .\n")
-        print(f"Prescribed parameter deltas: {chosen_delta_param.flatten()}")
+        print(f"Prescribed parameter deltas: {recovery_test_dparam.flatten()}")
         print(f"Recovered parameter deltas: {nonlin_recovered_delta_param.flatten()}")
-        print(f"Norm(chosen_delta_param - nonlin_recovered_delta_param) = {np.linalg.norm(chosen_delta_param - nonlin_recovered_delta_param)}")            
+        print(f"Norm(recovery_test_dparam - nonlin_recovered_delta_param) = {np.linalg.norm(recovery_test_dparam - nonlin_recovered_delta_param)}")            
     
     
-    assert np.allclose(chosen_delta_param, nonlin_recovered_delta_param), "Recovered parameter delta is not close to chosen parameter delta"
+    assert np.allclose(recovery_test_dparam, nonlin_recovered_delta_param), "Recovered parameter delta is not close to chosen dparam"
 
 
 

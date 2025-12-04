@@ -56,7 +56,7 @@ def config_core():
     # Set debug level
     debug_level = 1
     # Set perturbation for the recovery test
-    chosen_delta_param = 0.5
+    recovery_test_dparam = 0.5
     
     #varPrefixes = ['SWCF', 'TMQ', 'LWCF', 'PRECT']
     #varPrefixes = ['SWCF', 'LWCF', 'FSNTC', 'FLNTC']
@@ -608,7 +608,7 @@ def config_core():
      paramsNamesScalesAndSuffixes, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom,
-     debug_level, chosen_delta_param, beVerbose)
+     debug_level, recovery_test_dparam, beVerbose)
 
     # SST4K: Output defaultNcFilenameSST4K, etc.
 

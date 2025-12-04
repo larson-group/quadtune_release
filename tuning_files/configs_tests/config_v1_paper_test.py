@@ -64,7 +64,7 @@ def config_core():
 
     # If debug_level > 0: Set delta_param for test
     # This will be applied to all parameters
-    chosen_delta_param = 0.5 
+    recovery_test_dparam = 0.5 
     
     
 
@@ -212,7 +212,7 @@ def config_core():
      paramsNamesScalesAndSuffixes, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom,
-     debug_level, chosen_delta_param, beVerbose)
+     debug_level, recovery_test_dparam, beVerbose)
 
 def config_plots(beVerbose: bool, varPrefixes:list[str], paramsNames:list[str]) -> tuple[dict[str, bool], np.ndarray, int, Callable]:
     """
