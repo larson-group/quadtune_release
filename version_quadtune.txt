@@ -1,0 +1,91 @@
+commit a447c3a511b26587e97cd8ee3ca2ba6dbdae15ee
+Author: nobrewittwer <nils.wittwer@gmx.de>
+Date:   Thu Dec 4 11:21:09 2025 -0600
+
+    renamed chosen_delta_params to recovery_test_dparams
+
+commit 67e307fbbbc8f98c1fed6a816df20debdd62768e
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Mon Dec 1 19:30:17 2025 -0600
+
+    Left comment for numMetricsToTune for when we want to tune for all variables in varPrefixes.
+
+commit ade9883e6f8e05a2fa3044f525f08239e08940cb
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Mon Dec 1 11:13:08 2025 -0600
+
+    Optimized the ratio from the generalized eigenvalue problem  (#13)
+    
+    * Optimized the ratio from the generalized eigenvalue problem with COBYLA and basinhopping (linear and nonlinear)
+    
+    * Added changes according to the review
+
+commit 30f88a03d256f61688c0421600145238296a9534
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Fri Nov 21 14:09:36 2025 -0600
+
+    Add parentheses to a sentence in README.md.
+
+commit 4b86499e908f227372d390133cd6cf6742c93d6f
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Tue Nov 11 17:24:56 2025 -0600
+
+    Added SST4K sensitivity plots and increased speed of createMapPanel (#12)
+    
+    * Added SST4K sensitivity plots and increased speed of createMapPanel
+    
+    * renamed and commented according to the review
+
+commit a5d87987804f0633e565c418db79aca349a40b3c
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Thu Nov 6 13:43:22 2025 -0600
+
+    Added solving of a generalized eigenvalue problem to find new parameters (#11)
+    
+    * Added solving of a generalized eigenvalue problem to find new parameters
+    
+    * Changed names and desriptions according to the review
+    
+    * Added warning if doCalcGenEig=False and createPlotType['SST4KPanelGallery']=True
+    
+    * moved check and warning to the correct place
+
+commit 3fb3b30ec32d7bd117ced747e6e4443f6f5c62a9
+Author: vlarson <vlarson@uwm.edu>
+Date:   Thu Oct 30 17:07:46 2025 -0500
+
+    Specify dummy SST4K filenames so that I can set doBootstrap=T with CAM.
+    
+    For larson-group/clubb#910.
+
+commit 5d463144761df2c93ac5f7eda9f1314edebf3d78
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Thu Oct 23 16:17:54 2025 -0500
+
+    2d loss function plots (#10)
+    
+    * Added 2D plots of the Lossfunction to the dashboard
+    
+    * renamed variables according to the review
+    
+    * plots are now shown side by side
+
+commit 31777fc62852f106eec66c52624349bf6f59f9af
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Mon Oct 20 11:53:14 2025 -0500
+
+    Refactor recovery test (#9)
+    
+    * fixed chosen_delta_param, test for cam, corrected output
+    
+    * Added a missing space
+
+commit f3a1aca1b7d647913d79488dcdf0862b68bbd9a3
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Mon Oct 20 09:43:56 2025 -0500
+
+    redefined debug_levels and included beVerbose as a parameter in the config files (#8)
+    
+    * redefined debug_levels and included beVerbose as a parameter in the config files
+    
+    * Added changes according to the review
