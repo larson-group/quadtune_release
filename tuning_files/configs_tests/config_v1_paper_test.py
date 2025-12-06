@@ -38,7 +38,7 @@ def config_core():
     # Non-dimensional pre-factor of penalty term in loss function that penalizes when
     #   the tuner leaves a global-mean bias, i.e., when the residuals don't sum to zero.
     #   Set to 1.0 for a "medium" penalty, and set to 0.0 for no penalty.
-    penaltyCoef = 0.0
+    penaltyCoef = np.array([0.0])
 
 
     doCreatePlots = False
