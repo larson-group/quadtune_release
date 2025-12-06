@@ -952,7 +952,7 @@ def lossFncWithPenalty(dnormlzdParams, normlzdSensMatrix, normlzdDefaultBiasesCo
     lastDim = weightedBiasDiffCol.shape[1]
     weightedBiasDiffCol_reshaped = np.reshape(weightedBiasDiffCol,(numMetricFields,numBoxesInMap_tmp,lastDim))
     penalized_weightedBiasDiffCol_reshaped = penaltyCoef[:,None,None] * weightedBiasDiffCol_reshaped
-    penalized_weightedBiasDiffCol = np.reshape(penalized_weightedBiasDiffCol_reshaped,(numMetricFields*numBoxesInMap_tmp,lastDim))
+    penalized_weightedBiasDiffCol = np.reshape(penalized_weightedBiasDiffCol_reshaped,(numMetrics,lastDim))
 
     # This is the chisqd fnc listed in Eqn. (15.2.2) of Numerical Recipes, 1992.
     # It is like MSE (not RMSE), except that it sums the squares rather than averaging them.
