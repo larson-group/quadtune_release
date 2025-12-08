@@ -41,7 +41,7 @@ def config_core():
     # Non-dimensional pre-factor of penalty term in loss function that penalizes when
     #   the tuner leaves a global-mean bias, i.e., when the residuals don't sum to zero.
     #   Set to 1.0 for a "medium" penalty, and set to 0.0 for no penalty.
-    penaltyCoef = 0.0
+    penaltyCoef = np.array([0.0])
 
     # Flag for whether or not to create plots after the tuning is done.
     doCreatePlots = True
@@ -60,16 +60,23 @@ def config_core():
     #   will appear in plots but not be counted in the tuning.
     boxSize = 20
     numBoxesInMap = np.rint( (360/boxSize) * (180/boxSize) )
+
+    # varPrefixes needs to be defined before numMetricsToTune
+    # since the latter is sometimes defined in terms of varPrefixes
+    #varPrefixes = ['SWCF', 'TMQ', 'LWCF', 'PRECT']
+    #varPrefixes = ['SWCF', 'LWCF', 'FSNTC', 'FLNTC']
+    varPrefixes = ['RESTOM']
+
+    # sanity check for penalty coef and varPrefixes (need to be same length)
+    if len(varPrefixes) != len(penaltyCoef):
+      raise ValueError("varPrefixes and penaltyCoef do not have the same length.")
+
     # numMetricsToTune includes all (e.g., 20x20 regions) and as many
     #   variables as we want to tune, up to all varPrefixes.
     #numMetricsToTune = numBoxesInMap * len(varPrefixes)  # Tune all variables in varPrefixes
     #numMetricsToTune = numBoxesInMap * (len(varPrefixes)-1)  # Omit a variable from tuning.
     numMetricsToTune = numBoxesInMap  # Only tune for first variable in varPrefixes
     numMetricsToTune = numMetricsToTune.astype(int)
-
-    #varPrefixes = ['SWCF', 'TMQ', 'LWCF', 'PRECT']
-    #varPrefixes = ['SWCF', 'LWCF', 'FSNTC', 'FLNTC']
-    varPrefixes = ['RESTOM']
 
 
     doObsOffset = False
@@ -79,7 +86,6 @@ def config_core():
         sys.exit("Error: obsOffset must be the same size as the number of variables to tune.")
 
     obsOffsetCol = ( obsOffset[:, np.newaxis] * np.ones((1,numBoxesInMap.astype(int))) ).reshape(-1,1)
-
 
 
     #highlightedMetricsToPlot = np.array(['PRECT_5_5', 'PRECT_4_8',

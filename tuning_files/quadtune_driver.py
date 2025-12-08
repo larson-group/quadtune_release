@@ -406,9 +406,9 @@ def main(args):
     #print("Tuned parameter perturbation values (dnormzldParamsSolnNonlin)")
     #for idx in range(0,len(paramsNames)): \
     #    print("{:33s} {:7.7g}".format(paramsNames[idx], dnormlzdParamsSolnNonlin[idx][0] ) )
-    print("\nTuned parameter values (paramsSolnNonlin)")
+    print("\nTuned parameter values (paramsSolnNonlin)          Default value")
     for idx in range(0,len(paramsNames)): \
-        print("{:33s} {:7.7g}".format(paramsNames[idx], paramsSolnNonlin[idx][0] ) )
+        print("{:33s} {:15.7f} {:15.7f}".format(paramsNames[idx], paramsSolnNonlin[idx][0], defaultParamValsOrigRow[0][idx] ) )
 
     # Check whether the minimizer actually reduces chisqd
     # Initial value of chisqd, which assumes parameter perturbations are zero
@@ -945,21 +945,22 @@ def lossFncWithPenalty(dnormlzdParams, normlzdSensMatrix, normlzdDefaultBiasesCo
     #    np.square( (-normlzdDefaultBiasesCol \
     #     - fwdFnc(dnormlzdParams, normlzdSensMatrix, normlzdCurvMatrix, numMetrics) \
     #     ) * metricsWeights )
+
+    # multiplying weightedBiasDiffCol by penaltyCoef values
+    numMetricFields = len(penaltyCoef)
+    numBoxesInMap_tmp = int(numMetrics/numMetricFields)
+    lastDim = weightedBiasDiffCol.shape[1]
+    weightedBiasDiffCol_reshaped = np.reshape(weightedBiasDiffCol,(numMetricFields,numBoxesInMap_tmp,lastDim))
+    penalized_weightedBiasDiffCol_reshaped = penaltyCoef[:,None,None] * weightedBiasDiffCol_reshaped
+    penalized_weightedBiasDiffCol = np.reshape(penalized_weightedBiasDiffCol_reshaped,(numMetrics,lastDim))
+
     # This is the chisqd fnc listed in Eqn. (15.2.2) of Numerical Recipes, 1992.
     # It is like MSE (not RMSE), except that it sums the squares rather than averaging them.
     #chisqd = #np.sum(weightedBiasDiffSqdCol) \
     #chisqd = np.sum( np.abs( weightedBiasDiffCol ) ) \
     chisqd = np.sum(np.square(weightedBiasDiffCol)) \
              + reglrCoef * np.linalg.norm(dnormlzdParams, ord=1) \
-             + penaltyCoef * \
-                 np.square( np.sum (
-                     lossFncMetricsKernel(dnormlzdParams, normlzdSensMatrix,
-                                          normlzdDefaultBiasesCol, metricsWeights,
-                                          normlzdCurvMatrix,
-                                          doPiecewise, normlzd_dpMid,
-                                          normlzdLeftSensMatrix, normlzdRightSensMatrix,
-                                          numMetrics,
-                                          normlzdInteractDerivs, interactIdxs)
+               + np.square( np.sum ( penalized_weightedBiasDiffCol
 #                     (-normlzdDefaultBiasesCol
 #                    - fwdFnc(dnormlzdParams, normlzdSensMatrix, normlzdCurvMatrix,
 #                             doPiecewise, normlzd_dpMid,
