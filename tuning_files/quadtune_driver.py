@@ -88,7 +88,7 @@ def main(args):
      paramsNamesScalesAndFilenames, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom, 
-     debug_level, recovery_test_dparam, sensParamBounds, beVerbose) \
+     debug_level, recovery_test_dparam, doSensParamBounds, beVerbose) \
     = \
         config_file.config_core()
 
@@ -396,7 +396,7 @@ def main(args):
                          normlzdLeftSensMatrix, normlzdRightSensMatrix,
                          normlzdInteractDerivs, interactIdxs,
                          reglrCoef, penaltyCoef,
-                         sensParamBounds, beVerbose)
+                         doSensParamBounds, beVerbose)
 
     y_hat_i = defaultBiasesApproxNonlin + defaultBiasesCol + obsMetricValsCol
 
@@ -989,7 +989,7 @@ def solveUsingNonlin(metricsNames,
                      normlzdInteractDerivs = np.empty(0), interactIdxs = np.empty(0),
                      reglrCoef = 0.0,
                      penaltyCoef = 0.0,
-                     sensParamBounds = False,
+                     doSensParamBounds = False,
                      beVerbose = False):
     """Find optimal parameter values by minimizing quartic loss function"""
 
@@ -999,7 +999,7 @@ def solveUsingNonlin(metricsNames,
     # Don't let parameter values go negative
 #    lowerBoundsCol =  -defaultParamValsOrigRow[0]/magParamValsRow[0]
 
-    if sensParamBounds: #don't let quadtune find solutions outside range spanned by default and sensitivity runs 
+    if doSensParamBounds: #don't let quadtune find solutions outside range spanned by default and sensitivity runs 
       lowerBoundsCol = normlzdOrdDparamsMin[0,:]
       upperBoundsCol = normlzdOrdDparamsMax[0,:]
     else: #no bounds on quadtune solutions

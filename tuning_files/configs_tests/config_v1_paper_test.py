@@ -216,7 +216,7 @@ def config_core():
      paramsNamesScalesAndSuffixes, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom,
-     debug_level, recovery_test_dparam, sensParamBounds, beVerbose)
+     debug_level, recovery_test_dparam, doSensParamBounds, beVerbose)
 
 def config_plots(beVerbose: bool, varPrefixes:list[str], paramsNames:list[str]) -> tuple[dict[str, bool], np.ndarray, int, Callable]:
     """

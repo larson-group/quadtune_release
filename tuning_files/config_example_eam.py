@@ -612,7 +612,7 @@ def config_core():
      paramsNamesScalesAndSuffixes, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom,
-     debug_level, recovery_test_dparam, sensParamBounds, beVerbose)
+     debug_level, recovery_test_dparam, doSensParamBounds, beVerbose)
 
     # SST4K: Output defaultNcFilenameSST4K, etc.
 
