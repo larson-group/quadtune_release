@@ -34,9 +34,9 @@ def config_core():
     # Flag for enabling additional output of multiple functions
     beVerbose = False
 
-    # Flag for whether to bound quadtune solutions to remain within
-    # tested parameter ranges
-    sensParamBounds = False
+    # Flag for whether to bound quadtune parameter values to remain within
+    # the range spanned by the default and sensitivity runs.
+    doSensParamBounds = False
 
     # L1 regularization coefficient, i.e., penalty on param perturbations in objFnc
     # Increase this value to 0.1 or 0.5 or so if you want to eliminate

@@ -999,14 +999,14 @@ def solveUsingNonlin(metricsNames,
     # Don't let parameter values go negative
 #    lowerBoundsCol =  -defaultParamValsOrigRow[0]/magParamValsRow[0]
 
-    if sensParamBounds: #don't let quadtune find solutions outside tested parameter ranges
+    if sensParamBounds: #don't let quadtune find solutions outside range spanned by default and sensitivity runs 
       lowerBoundsCol = normlzdOrdDparamsMin[0,:]
       upperBoundsCol = normlzdOrdDparamsMax[0,:]
     else: #no bounds on quadtune solutions
       lowerBoundsCol = -999999999*np.ones_like(normlzdOrdDparamsMin[0,:])
       upperBoundsCol =  999999999*np.ones_like(normlzdOrdDparamsMin[0,:])   
 
-    bounds_for_minimize = list(zip(lowerBoundsCol.flatten(),upperBoundsCol.flatten()))
+    lower_and_upper_bounds = list(zip(lowerBoundsCol.flatten(),upperBoundsCol.flatten()))
 
     #x0TwoYr = np.array([-0.1400083, -0.404022, 0.2203307, -0.9838958, 0.391993, -0.05910007, 1.198831])
     #x0TwoYr = np.array([0.5805136, -0.1447917, -0.2722521, -0.8183079, 0.3150205, -0.4794127, 0.1104284])
@@ -1025,7 +1025,7 @@ def solveUsingNonlin(metricsNames,
                                                reglrCoef, penaltyCoef, numMetrics,
                                                normlzdInteractDerivs, interactIdxs),
                                          method='Powell', tol=1e-12,
-                                         bounds=bounds_for_minimize))
+                                         bounds=lower_and_upper_bounds))
 
     dnormlzdParamsSolnNonlin = np.atleast_2d(dnormlzdParamsSolnNonlin.x).T
     paramsSolnNonlin = calc_dimensional_param_vals(dnormlzdParamsSolnNonlin,magParamValsRow,defaultParamValsOrigRow)
