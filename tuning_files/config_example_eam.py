@@ -34,6 +34,10 @@ def config_core():
     # Flag for enabling additional output of multiple functions
     beVerbose = False
 
+    # Flag for whether to bound quadtune parameter values to remain within
+    # the range spanned by the default and sensitivity runs.
+    doSensParamBounds = False
+
     # L1 regularization coefficient, i.e., penalty on param perturbations in objFnc
     # Increase this value to 0.1 or 0.5 or so if you want to eliminate
     # unimportant parameters.
@@ -608,7 +612,7 @@ def config_core():
      paramsNamesScalesAndSuffixes, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom,
-     debug_level, recovery_test_dparam, beVerbose)
+     debug_level, recovery_test_dparam, doSensParamBounds, beVerbose)
 
     # SST4K: Output defaultNcFilenameSST4K, etc.
 
