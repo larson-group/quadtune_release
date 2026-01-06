@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from tuning_files import quadtune_driver
 import numpy as np
 
-def test_v1_paper_tuning():
+def test_v1_paper_tuning() -> None:
     
     quadtune_v1_test_parameter_values, _ = quadtune_driver.main(["-c", "configs_tests.config_v1_paper_test"])
     true_parameter_values = [0.7970267, 0.4655446, 0.0880349, 0.0004552707, 0.1357132]
