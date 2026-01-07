@@ -120,29 +120,22 @@ def main(args):
     if doWeightRegions:
         # will need total number of regions in map
         numBoxesInMap_tmp = int(len(metricsNames) / len(varPrefixes))
-#        print(numBoxesInMap_tmp)
         for key in weightedRegionsDict:
             latidx_str, lonidx_str = key.split('_')
             latidx = int(latidx_str)
             lonidx = int(lonidx_str)
             weight = weightedRegionsDict[key]
-#            print("latidx,lonidx,weight = ",latidx,lonidx,weight)
             # find the index of the custom-weighted region
             # the number of longitude indices is int(2*np.sqrt(numBoxesInMap_tmp/2))
             numLongIdxs = int(2*np.sqrt(numBoxesInMap_tmp/2))
             metricsWeightsIdx = (latidx - 1) * numLongIdxs + lonidx - 1
-#            print("numLongIdxs, metricsWeightsIdx = ",numLongIdxs, metricsWeightsIdx)
             # loop over varPrefix range to apply the weight to all metrics
             for prefix_idx in range(len(varPrefixes)):
-#                print(metricsWeights[metricsWeightsIdx+prefix_idx * numBoxesInMap_tmp,:])
                 metricsWeights[metricsWeightsIdx + prefix_idx * numBoxesInMap_tmp,:] = weight \
                                        * metricsWeights[metricsWeightsIdx + prefix_idx * numBoxesInMap_tmp,:]
-#                print(metricsWeights[metricsWeightsIdx+prefix_idx * numBoxesInMap_tmp,:])
-#                print(np.sum(metricsWeights))
  
         # renormalize the weights by dividing by the sum divided by the number of metrics
         metricsWeights = metricsWeights / (np.sum(metricsWeights)/len(varPrefixes))
-#        print(np.sum(metricsWeights))
 
     if doCreatePlots:
         createPlotType, highlightedMetricsToPlot, mapVarIdx, abbreviateParamsNames  = \
