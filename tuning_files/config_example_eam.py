@@ -84,7 +84,7 @@ def config_core():
     numMetricsToTune = numMetricsToTune.astype(int)
 
     # Flag for whether to weight certain regions more (or less) than others
-    doWeightRegions = True
+    doWeightRegions = False
 
     # Dictionary for custom-weighted regions. The entries should follow the
     # pattern 'region':factor, where 'region' is of the form '2_10' (latitude
