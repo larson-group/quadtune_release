@@ -88,7 +88,8 @@ def main(args):
      paramsNamesScalesAndFilenames, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom, 
-     debug_level, recovery_test_dparam, doSensParamBounds, beVerbose) \
+     debug_level, recovery_test_dparam, doSensParamBounds,
+     doWeightRegions, weightedRegionsDict, beVerbose) \
     = \
         config_file.config_core()
 
@@ -107,12 +108,41 @@ def main(args):
     (metricsNames, metricsWeights, metricGlobalAvgs, numMetricsNoCustom) = \
         process_config_info.process_metrics_names_weights_norms(defaultNcFilename, varPrefixes)
 
+    # print the global mean metric values for convenient comparison to obs values
+    for prefix_idx in range(len(varPrefixes)):
+        print(f"metricGlobalAvgs for {varPrefixes[prefix_idx]} = ",metricGlobalAvgs[prefix_idx])
 
     (metricsNames, metricsWeights,metricsNorms, metricsNamesNoprefix) = \
         process_config_info.process_metrics_names_weights_norms_custom(metricsNamesWeightsAndNormsCustom, metricsNames,
                                                                             metricsWeights, metricsNorms)
-    
-    
+
+    # recalculate metricsWeights if we are using custom weighting on certain regions (i.e. doWeightRegions = True)    
+    if doWeightRegions:
+        # will need total number of regions in map
+        numBoxesInMap_tmp = int(len(metricsNames) / len(varPrefixes))
+#        print(numBoxesInMap_tmp)
+        for key in weightedRegionsDict:
+            latidx_str, lonidx_str = key.split('_')
+            latidx = int(latidx_str)
+            lonidx = int(lonidx_str)
+            weight = weightedRegionsDict[key]
+#            print("latidx,lonidx,weight = ",latidx,lonidx,weight)
+            # find the index of the custom-weighted region
+            # the number of longitude indices is int(2*np.sqrt(numBoxesInMap_tmp/2))
+            numLongIdxs = int(2*np.sqrt(numBoxesInMap_tmp/2))
+            metricsWeightsIdx = (latidx - 1) * numLongIdxs + lonidx - 1
+#            print("numLongIdxs, metricsWeightsIdx = ",numLongIdxs, metricsWeightsIdx)
+            # loop over varPrefix range to apply the weight to all metrics
+            for prefix_idx in range(len(varPrefixes)):
+#                print(metricsWeights[metricsWeightsIdx+prefix_idx * numBoxesInMap_tmp,:])
+                metricsWeights[metricsWeightsIdx + prefix_idx * numBoxesInMap_tmp,:] = weight \
+                                       * metricsWeights[metricsWeightsIdx + prefix_idx * numBoxesInMap_tmp,:]
+#                print(metricsWeights[metricsWeightsIdx+prefix_idx * numBoxesInMap_tmp,:])
+#                print(np.sum(metricsWeights))
+ 
+        # renormalize the weights by dividing by the sum divided by the number of metrics
+        metricsWeights = metricsWeights / (np.sum(metricsWeights)/len(varPrefixes))
+#        print(np.sum(metricsWeights))
 
     if doCreatePlots:
         createPlotType, highlightedMetricsToPlot, mapVarIdx, abbreviateParamsNames  = \
