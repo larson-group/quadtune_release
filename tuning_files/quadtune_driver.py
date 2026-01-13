@@ -123,6 +123,7 @@ def main(args):
     if doWeightRegions:
         metricsWeights = reweight_regions_by_weightedRegionsDict(boxSize, numMetricsToTune, weightedRegionsDict,
                                                                  metricsWeights)
+     
     if doCreatePlots:
         createPlotType, highlightedMetricsToPlot, mapVarIdx, abbreviateParamsNames  = \
             config_file.config_plots(beVerbose, varPrefixes = varPrefixes, paramsNames = paramsNames)
