@@ -74,7 +74,7 @@ def config_core():
 
     doObsOffset = False
     obsOffset = np.array([0])
-    if ( len(obsOffset) != len(varPrefixes) ):
+    if doObsOffset and ( len(obsOffset) != len(varPrefixes) ):
         sys.exit("Error: obsOffset must be the same size as the number of variables to tune.")
 
     # Number of metrics to tune.
@@ -88,6 +88,16 @@ def config_core():
     #   variables as we want to tune, up to all varPrefixes.
     numMetricsToTune = numBoxesInMap * len(varPrefixes)
     numMetricsToTune = numMetricsToTune.astype(int)
+
+    # Flag for whether to weight certain regions more (or less) than others
+    doWeightRegions = False
+
+    # Dictionary for custom-weighted regions. The entries should follow the
+    # pattern 'region':factor, where 'region' is of the form '2_10' (latitude
+    # index followed by longitude index) and the factor is a multiplicative
+    # factor that will be applied to the weight for that region (i.e. factor=1.0
+    # would make no difference).
+    weightedRegionsDict = {'5_14':2.0}
 
     obsOffsetCol = (obsOffset[:, np.newaxis] * np.ones((1, numBoxesInMap.astype(int)))).reshape(-1, 1)
                          
@@ -216,7 +226,8 @@ def config_core():
      paramsNamesScalesAndSuffixes, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom,
-     debug_level, recovery_test_dparam, doSensParamBounds, beVerbose)
+     debug_level, recovery_test_dparam, doSensParamBounds,
+     doWeightRegions, weightedRegionsDict, beVerbose)
 
 def config_plots(beVerbose: bool, varPrefixes:list[str], paramsNames:list[str]) -> tuple[dict[str, bool], np.ndarray, int, Callable]:
     """

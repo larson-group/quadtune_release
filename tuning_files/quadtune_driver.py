@@ -88,7 +88,8 @@ def main(args):
      paramsNamesScalesAndFilenames, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom, 
-     debug_level, recovery_test_dparam, doSensParamBounds, beVerbose) \
+     debug_level, recovery_test_dparam, doSensParamBounds,
+     doWeightRegions, weightedRegionsDict, beVerbose) \
     = \
         config_file.config_core()
 
@@ -107,13 +108,21 @@ def main(args):
     (metricsNames, metricsWeights, metricGlobalAvgs, numMetricsNoCustom) = \
         process_config_info.process_metrics_names_weights_norms(defaultNcFilename, varPrefixes)
 
+    # print the global mean metric values for convenient comparison to obs values
+    # metricGlobalAvgs is based on the default test (defaultNcFilename) for the ensemble 
+    # (see the lines of code immediately above this)
+    for prefix_idx in range(len(varPrefixes)):
+        print(f"metricGlobalAvgs for {varPrefixes[prefix_idx]} = ",metricGlobalAvgs[prefix_idx])
 
     (metricsNames, metricsWeights,metricsNorms, metricsNamesNoprefix) = \
         process_config_info.process_metrics_names_weights_norms_custom(metricsNamesWeightsAndNormsCustom, metricsNames,
                                                                             metricsWeights, metricsNorms)
-    
-    
 
+    # recalculate metricsWeights if we are using custom weighting on certain regions (i.e. doWeightRegions = True)
+    # ***metricsWeights SHOULD NOT be altered after this point***
+    if doWeightRegions:
+        metricsWeights = reweight_regions_by_weightedRegionsDict(boxSize, numMetricsToTune, weightedRegionsDict,
+                                                                 metricsWeights)
     if doCreatePlots:
         createPlotType, highlightedMetricsToPlot, mapVarIdx, abbreviateParamsNames  = \
             config_file.config_plots(beVerbose, varPrefixes = varPrefixes, paramsNames = paramsNames)
@@ -1701,6 +1710,35 @@ def check_recovery_of_param_vals(debug_level: int, recovery_test_dparam: np.ndar
     
     assert np.allclose(recovery_test_dparam, nonlin_recovered_delta_param), "Recovered parameter delta is not close to chosen dparam"
 
+def reweight_regions_by_weightedRegionsDict(boxSize,numMetricsToTune,weightedRegionsDict,
+                                            metricsWeights):
+    """
+    Recalculates and re-normalizes metricsWeights if we are using custom 
+    weighting on certain regions (i.e. doWeightRegions = True)
+    """
+
+    # will need total number of regions in map
+    numBoxesInMap = int( (360/boxSize) * (180/boxSize) )
+    # numTuningMetrics is the number of metrics that are actively being tuned for, 
+    # because varPrefixes may contain fields that are not being used for tuning
+    numTuningMetrics = int( numMetricsToTune / numBoxesInMap )
+    for key in weightedRegionsDict:
+        latidx_str, lonidx_str = key.split('_')
+        latidx = int(latidx_str)
+        lonidx = int(lonidx_str)
+        weight = weightedRegionsDict[key]
+        # the number of longitude indices is 360/boxSize 
+        numLonIdxs = int(360/boxSize)
+        # find the index of the custom-weighted region
+        metricsWeightsIdx = (latidx - 1) * numLonIdxs + lonidx - 1
+        # loop over varPrefix range to apply the weight to all metrics
+        for metric_idx in range(numTuningMetrics):
+            metricsWeights[metricsWeightsIdx + metric_idx * numBoxesInMap,:] = weight \
+                                   * metricsWeights[metricsWeightsIdx + metric_idx * numBoxesInMap,:]
+
+    # renormalize the weights by dividing by the sum divided by the number of metrics
+    metricsWeights = metricsWeights / (np.sum(metricsWeights)/numTuningMetrics)
+    return metricsWeights
 
 
 if __name__ == '__main__':
