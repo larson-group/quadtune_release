@@ -155,6 +155,7 @@ def setUp_x_ObsMetricValsDict(varPrefixes, suffix="", obsPathAndFilename=""):
                 #and not "MSWCF" in varName
                 varEntry = f_obs[varName]
                 varVal = varEntry[:].data[:][0]
+                # varVal =np.mean(varEntry[:].data[:])
                 if varPrefix == 'O500':
                     obsMetricValsDict[varName] = varVal[16]
                 else:

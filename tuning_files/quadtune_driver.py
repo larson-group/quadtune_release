@@ -66,64 +66,146 @@ def main(args):
     #Parse the argument to get the config filename and import setUpConfig from that file | !! Potentially unsafe -> Import arbitrary function !!
     parser = argparse.ArgumentParser()
     parser.add_argument("-c","--config_filename", type=str,required=True,help="Please provide the filename of your config file, e.g., config_default.py")
+    parser.add_argument("--ppe", action="store_true", help="Indicate that the data provided is PPE data.")
 
     args = parser.parse_args(args)
     config_file = importlib.import_module(args.config_filename.replace('.py',''))
+    doUsePPEdata = args.ppe
 
     print("Set up inputs . . .")
 
-    # The user should input all tuning configuration info into file set_up_inputs.py
-    (numMetricsToTune,
-     varPrefixes, boxSize,
-     doCreatePlots, metricsNorms,
-     obsMetricValsDict,
-     obsOffsetCol, obsGlobalAvgCol, doObsOffset,
-     obsWeightsCol,
-     transformedParamsNames,
-     defaultNcFilename, globTunedNcFilename,
-     interactParamsNamesAndFilenames,
-     doMaximizeRatio,
-     doPiecewise,
-     reglrCoef, penaltyCoef, doBootstrapSampling,
-     paramsNamesScalesAndFilenames, folder_name,
-     prescribedParamsNamesScalesAndValues,
-     metricsNamesWeightsAndNormsCustom, 
-     debug_level, recovery_test_dparam, doSensParamBounds,
-     doWeightRegions, weightedRegionsDict, beVerbose) \
-    = \
-        config_file.config_core()
 
-    # Process configuration
+    if doUsePPEdata:
 
-    (paramsNames, paramsScales,
-    sensNcFilenames,sensNcFilenamesExt) = \
-        process_config_info.process_paramsnames_scales_and_filesuffixes(paramsNamesScalesAndFilenames, folder_name)
+        import read_PPE_files
 
-    (prescribedParamsNames, prescribedParamsScales,
-    prescribedParamValsRow, prescribedSensNcFilenames,
-    prescribedSensNcFilenamesExt,
-    prescribedTransformedParamsNames) = \
-        process_config_info.process_prescribed_paramsnames(prescribedParamsNamesScalesAndValues, folder_name)
+        from set_up_inputs import calcObsGlobalAvgCol
 
-    (metricsNames, metricsWeights, metricGlobalAvgs, numMetricsNoCustom) = \
-        process_config_info.process_metrics_names_weights_norms(defaultNcFilename, varPrefixes)
+        (numMetricsToTune,
+         varPrefixes, boxSize,
+         doCreatePlots,
+         PPE_metrics_filename, PPE_params_filename,
+         doMaximizeRatio,
+         doPiecewise,
+         interactParamsNamesAndFilenames,
+         reglrCoef, penaltyCoef, doBootstrapSampling,
+         paramsNamesAndScales, allparamsNamesInFile,
+         debug_level, recovery_test_dparam,
+         doSensParamBounds, 
+         doWeightRegions, weightedRegionsDict,
+         beVerbose) = \
+            config_file.config_core()
+        
+        paramsNames, paramsScales = read_PPE_files.get_PPE_paramNames(paramsNamesAndScales)
 
-    # print the global mean metric values for convenient comparison to obs values
+        metricsNames, defaultMetricValsCol, metricsWeights = read_PPE_files.get_PPE_default_metrics_names_and_metrics_weights(PPE_metrics_filename,varPrefixes,boxSize)
+
+        metricGlobalAvgs = np.mean(defaultMetricValsCol.reshape(-1,len(varPrefixes)),axis=1)
+
+        obsMetricValsCol, obsWeightsCol = read_PPE_files.get_PPE_obs_metrics_weights(PPE_metrics_filename, metricsNames)
+
+        paramsIndices = read_PPE_files.get_PPE_param_idxs(allparamsNamesInFile,paramsNames)
+
+
+        defaultParamValsOrigRow = read_PPE_files.get_PPE_default_params(PPE_params_filename,paramsIndices)
+
+        obsMetricValsDict, obsWeightsDict = read_PPE_files.setUp_x_ObsMetricValsDictPPE(obsMetricValsCol.flatten(),obsWeightsCol.flatten(),metricsNames)
+
+        obsGlobalAvgCol, obsGlobalStdCol, obsWeightsCol = \
+        calcObsGlobalAvgCol(varPrefixes,
+                        obsMetricValsDict, obsWeightsDict)
+        
+        metricsNorms = np.copy(obsGlobalAvgCol)
+
+
+        magParamValsRow = np.abs(defaultParamValsOrigRow)
+
+        defaultBiasesCol = defaultMetricValsCol - obsMetricValsCol
+
+        metricsWeights /= np.sum(metricsWeights)
+
+        normMetricValsCol = np.copy(metricsNorms)
+        for idx in np.arange(len(metricsNorms)):
+            if np.isclose(metricsNorms[idx],-999.0): 
+                normMetricValsCol[idx] = obsMetricValsCol[idx]
+
+        
+
+        
+
+        sensParamValsRow = defaultParamValsOrigRow
+        sensParamValsRowExt = defaultParamValsOrigRow
+        transformedParamsNames = ['']
+
+        normlzd_dpMid = np.zeros_like(sensParamValsRow)
+
+        normlzdLeftSensMatrix = None
+        normlzdRightSensMatrix = None
+        globTunedNcFilename = None
+
+        if doCreatePlots:
+            numMetricsNoCustom = len(metricsNames)
+            metricsNamesNoprefix = metricsNames
+            
+            sensNcFilenames = None
+            sensNcFilenamesExt = None
+            defaultNcFilename = None
+
+    else:
+
+        # The user should input all tuning configuration info into file set_up_inputs.py
+        (numMetricsToTune,
+        varPrefixes, boxSize,
+        doCreatePlots, metricsNorms,
+        obsMetricValsDict,
+        obsOffsetCol, obsGlobalAvgCol, doObsOffset,
+        obsWeightsCol,
+        transformedParamsNames,
+        defaultNcFilename, globTunedNcFilename,
+        interactParamsNamesAndFilenames,
+        doMaximizeRatio,
+        doPiecewise,
+        reglrCoef, penaltyCoef, doBootstrapSampling,
+        paramsNamesScalesAndFilenames, folder_name,
+        prescribedParamsNamesScalesAndValues,
+        metricsNamesWeightsAndNormsCustom, 
+        debug_level, recovery_test_dparam, doSensParamBounds,
+        doWeightRegions, weightedRegionsDict, beVerbose) \
+        = \
+            config_file.config_core()
+
+        # Process configuration
+
+        (paramsNames, paramsScales,
+        sensNcFilenames,sensNcFilenamesExt) = \
+            process_config_info.process_paramsnames_scales_and_filesuffixes(paramsNamesScalesAndFilenames, folder_name)
+
+        (prescribedParamsNames, prescribedParamsScales,
+        prescribedParamValsRow, prescribedSensNcFilenames,
+        prescribedSensNcFilenamesExt,
+        prescribedTransformedParamsNames) = \
+            process_config_info.process_prescribed_paramsnames(prescribedParamsNamesScalesAndValues, folder_name)
+
+        (metricsNames, metricsWeights, metricGlobalAvgs, numMetricsNoCustom) = \
+            process_config_info.process_metrics_names_weights_norms(defaultNcFilename, varPrefixes)
+
+
+
+        (metricsNames, metricsWeights,metricsNorms, metricsNamesNoprefix) = \
+            process_config_info.process_metrics_names_weights_norms_custom(metricsNamesWeightsAndNormsCustom, metricsNames,
+                                                                                metricsWeights, metricsNorms)
+        
+        # print the global mean metric values for convenient comparison to obs values
     # metricGlobalAvgs is based on the default test (defaultNcFilename) for the ensemble 
     # (see the lines of code immediately above this)
     for prefix_idx in range(len(varPrefixes)):
-        print(f"metricGlobalAvgs for {varPrefixes[prefix_idx]} = ",metricGlobalAvgs[prefix_idx])
-
-    (metricsNames, metricsWeights,metricsNorms, metricsNamesNoprefix) = \
-        process_config_info.process_metrics_names_weights_norms_custom(metricsNamesWeightsAndNormsCustom, metricsNames,
-                                                                            metricsWeights, metricsNorms)
+        print(f"metricGlobalAvgs for {varPrefixes[prefix_idx]} = ", metricGlobalAvgs[prefix_idx])
 
     # recalculate metricsWeights if we are using custom weighting on certain regions (i.e. doWeightRegions = True)
     # ***metricsWeights SHOULD NOT be altered after this point***
     if doWeightRegions:
         metricsWeights = reweight_regions_by_weightedRegionsDict(boxSize, numMetricsToTune, weightedRegionsDict,
                                                                  metricsWeights)
-     
     if doCreatePlots:
         createPlotType, highlightedMetricsToPlot, mapVarIdx, abbreviateParamsNames  = \
             config_file.config_plots(beVerbose, varPrefixes = varPrefixes, paramsNames = paramsNames)
@@ -155,37 +237,78 @@ def main(args):
 
     print("Set up preliminaries . . .")
 
-    obsMetricValsCol, normMetricValsCol, \
-    defaultBiasesCol, \
-    defaultParamValsOrigRow, \
-    sensParamValsRow, sensParamValsRowExt, \
-    dnormlzdSensParams, \
-    magParamValsRow, \
-    dnormlzdPrescribedParams, \
-    magPrescribedParamValsRow, \
-    = setUpColAndRowVectors(metricsNames, metricsNorms,
-                            obsMetricValsDict,
-                            obsOffsetCol, obsGlobalAvgCol, doObsOffset,
-                            paramsNames, transformedParamsNames, prescribedParamsNames, prescribedParamValsRow,
-                            prescribedTransformedParamsNames,
-                            sensNcFilenames, sensNcFilenamesExt,
-                            defaultNcFilename
-                            )
+    if doUsePPEdata:
+        normlzdSensMatrixPoly,normlzdCurvMatrix, normlzdOrdDparamsMin, normlzdOrdDparamsMax = \
+            read_PPE_files.construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics_filename, PPE_params_filename, metricsNames, paramsIndices, normMetricValsCol)
+        
+        normlzdConstMatrix = np.zeros_like(normlzdCurvMatrix)
 
+    else:
+
+        obsMetricValsCol, normMetricValsCol, \
+        defaultBiasesCol, \
+        defaultParamValsOrigRow, \
+        sensParamValsRow, sensParamValsRowExt, \
+        dnormlzdSensParams, \
+        magParamValsRow, \
+        dnormlzdPrescribedParams, \
+        magPrescribedParamValsRow, \
+        = setUpColAndRowVectors(metricsNames, metricsNorms,
+                                obsMetricValsDict,
+                                obsOffsetCol, obsGlobalAvgCol, doObsOffset,
+                                paramsNames, transformedParamsNames, prescribedParamsNames, prescribedParamValsRow,
+                                prescribedTransformedParamsNames,
+                                sensNcFilenames, sensNcFilenamesExt,
+                                defaultNcFilename
+                                )
+
+
+        # Construct numMetrics x numParams matrix of second derivatives, d2metrics/dparams2.
+        #     The derivatives are normalized by observed metric values and max param values.
+        # Also construct a linear sensitivity matrix, dmetrics/dparams.
+        normlzdCurvMatrix, normlzdSensMatrixPoly, normlzdConstMatrix, \
+        normlzdOrdDparamsMin, normlzdOrdDparamsMax, \
+        normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix, \
+        normlzd_pLeftRow, normlzd_pMidRow, normlzd_pRightRow = \
+            constructNormlzdSensCurvMatrices(metricsNames, paramsNames, transformedParamsNames,
+                                    normMetricValsCol, magParamValsRow,
+                                    sensNcFilenames, sensNcFilenamesExt, defaultNcFilename)
+        
+
+        # For prescribed parameters, construct numMetrics x numParams matrix of second derivatives, d2metrics/dparams2.
+        # The derivatives are normalized by observed metric values and max param values.
+        normlzdPrescribedCurvMatrix, normlzdPrescribedSensMatrixPoly, normlzdPrescribedConstMatrix, \
+        normlzdPrescribedOrdDparamsMin, normlzdPrescribedOrdDparamsMax, \
+        normlzdPrescribed_dpMid, normlzdPrescribedLeftSensMatrix, normlzdPrescribedRightSensMatrix, \
+        normlzdPrescribed_pLeftRow, normlzdPrescribed_pMidRow, normlzdPrescribed_pRightRow = \
+            constructNormlzdSensCurvMatrices(metricsNames, prescribedParamsNames, prescribedTransformedParamsNames,
+                                    normMetricValsCol, magPrescribedParamValsRow,
+                                    prescribedSensNcFilenames, prescribedSensNcFilenamesExt, defaultNcFilename)
+
+        # This is the prescribed correction to the metrics that appears on the left-hand side of the Taylor equation.
+        #   It is not a bias from the obs.  It is a correction to the simulated default metric values
+        #   based on prescribed param values.
+
+        ### THIS CALL DOESN'T ACCOUNT FOR INTERACTIONS!!!
+        normlzdPrescribedBiasesCol = \
+            fwdFnc(dnormlzdPrescribedParams, normlzdPrescribedSensMatrixPoly, normlzdPrescribedCurvMatrix,
+                    doPiecewise, normlzdPrescribed_dpMid,
+                    normlzdLeftSensMatrix, normlzdRightSensMatrix,
+                    numMetrics,
+                    normlzdInteractDerivs= np.empty(0), interactIdxs = np.empty(0))
+
+        prescribedBiasesCol = normlzdPrescribedBiasesCol * np.abs(normMetricValsCol)
+
+        # defaultBiasesCol + prescribedBiasesCol = -fwdFnc_tuned_params  (see lossFnc).
+        #     This lumps the prescribed-parameter adjustment into defaultBiasesCol.
+        #        but it may be clearer to separate them out.
+        # defaultBiasesCol = default simulation - observations
+        defaultBiasesCol = defaultBiasesCol + prescribedBiasesCol
+
+        
     obsMetricValsAvgs = np.diag(np.dot(obsWeightsCol.reshape(-1, len(varPrefixes), order='F').T,
-                                 obsMetricValsCol.reshape(-1, len(varPrefixes), order='F')))
+                            obsMetricValsCol.reshape(-1, len(varPrefixes), order='F')))
     print(f"\nobsMetricValsAvgs (including any offsets) = {obsMetricValsAvgs}")
-
-    # Construct numMetrics x numParams matrix of second derivatives, d2metrics/dparams2.
-    #     The derivatives are normalized by observed metric values and max param values.
-    # Also construct a linear sensitivity matrix, dmetrics/dparams.
-    normlzdCurvMatrix, normlzdSensMatrixPoly, normlzdConstMatrix, \
-    normlzdOrdDparamsMin, normlzdOrdDparamsMax, \
-    normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix, \
-    normlzd_pLeftRow, normlzd_pMidRow, normlzd_pRightRow = \
-        constructNormlzdSensCurvMatrices(metricsNames, paramsNames, transformedParamsNames,
-                                   normMetricValsCol, magParamValsRow,
-                                   sensNcFilenames, sensNcFilenamesExt, defaultNcFilename)
 
     # In order to weight certain metrics, multiply each row of normlzdSensMatrixPoly
     # by metricsWeights
@@ -240,37 +363,6 @@ def main(args):
                                 doPiecewise, normlzd_dpMid, normlzdOrdDparamsMin, normlzdOrdDparamsMax,
                                   normlzdLeftSensMatrix, normlzdRightSensMatrix, numMetrics, normlzdInteractDerivs, interactIdxs,\
                                     metricsNames, metricsWeights, normMetricValsCol, magParamValsRow, defaultParamValsOrigRow, reglrCoef, penaltyCoef, beVerbose)
-        
-    # For prescribed parameters, construct numMetrics x numParams matrix of second derivatives, d2metrics/dparams2.
-    # The derivatives are normalized by observed metric values and max param values.
-    normlzdPrescribedCurvMatrix, normlzdPrescribedSensMatrixPoly, normlzdPrescribedConstMatrix, \
-    normlzdPrescribedOrdDparamsMin, normlzdPrescribedOrdDparamsMax, \
-    normlzdPrescribed_dpMid, normlzdPrescribedLeftSensMatrix, normlzdPrescribedRightSensMatrix, \
-    normlzdPrescribed_pLeftRow, normlzdPrescribed_pMidRow, normlzdPrescribed_pRightRow = \
-        constructNormlzdSensCurvMatrices(metricsNames, prescribedParamsNames, prescribedTransformedParamsNames,
-                                   normMetricValsCol, magPrescribedParamValsRow,
-                                   prescribedSensNcFilenames, prescribedSensNcFilenamesExt, defaultNcFilename)
-
-    # This is the prescribed correction to the metrics that appears on the left-hand side of the Taylor equation.
-    #   It is not a bias from the obs.  It is a correction to the simulated default metric values
-    #   based on prescribed param values.
-
-    ### THIS CALL DOESN'T ACCOUNT FOR INTERACTIONS!!!
-    normlzdPrescribedBiasesCol = \
-         fwdFnc(dnormlzdPrescribedParams, normlzdPrescribedSensMatrixPoly, normlzdPrescribedCurvMatrix,
-                doPiecewise, normlzdPrescribed_dpMid,
-                normlzdLeftSensMatrix, normlzdRightSensMatrix,
-                numMetrics,
-                normlzdInteractDerivs= np.empty(0), interactIdxs = np.empty(0))
-
-    prescribedBiasesCol = normlzdPrescribedBiasesCol * np.abs(normMetricValsCol)
-
-    # defaultBiasesCol + prescribedBiasesCol = -fwdFnc_tuned_params  (see lossFnc).
-    #     This lumps the prescribed-parameter adjustment into defaultBiasesCol.
-    #        but it may be clearer to separate them out.
-    # defaultBiasesCol = default simulation - observations
-    defaultBiasesCol = defaultBiasesCol + prescribedBiasesCol
-
     normlzdDefaultBiasesCol = defaultBiasesCol / np.abs(normMetricValsCol)
 
     print("Optimizing parameter values . . . ")
@@ -285,19 +377,20 @@ def main(args):
     normlzdCurvMatrixSvd = \
         approxMatrixWithSvd(normlzdCurvMatrix, sValsRatio, sValsNumToKeep=None, beVerbose=beVerbose)
 
-    # Check whether piecewise-linear and quadratic emulators agree at lo/hi parameter values
-    dLeftRightParams = ( normlzd_pLeftRow - defaultParamValsOrigRow * np.reciprocal(magParamValsRow) ).T
-    checkPiecewiseLeftRightPoints(dLeftRightParams,
-                                  normlzdSensMatrixPolySvd, normlzdCurvMatrix,
-                                  normlzd_dpMid,
-                                  normlzdLeftSensMatrix, normlzdRightSensMatrix,
-                                  numMetrics)
-    dLeftRightParams = ( normlzd_pRightRow - defaultParamValsOrigRow * np.reciprocal(magParamValsRow) ).T
-    checkPiecewiseLeftRightPoints(dLeftRightParams,
-                                  normlzdSensMatrixPolySvd, normlzdCurvMatrix,
-                                  normlzd_dpMid,
-                                  normlzdLeftSensMatrix, normlzdRightSensMatrix,
-                                  numMetrics)
+    if doPiecewise:
+        # Check whether piecewise-linear and quadratic emulators agree at lo/hi parameter values
+        dLeftRightParams = ( normlzd_pLeftRow - defaultParamValsOrigRow * np.reciprocal(magParamValsRow) ).T
+        checkPiecewiseLeftRightPoints(dLeftRightParams,
+                                    normlzdSensMatrixPolySvd, normlzdCurvMatrix,
+                                    normlzd_dpMid,
+                                    normlzdLeftSensMatrix, normlzdRightSensMatrix,
+                                    numMetrics)
+        dLeftRightParams = ( normlzd_pRightRow - defaultParamValsOrigRow * np.reciprocal(magParamValsRow) ).T
+        checkPiecewiseLeftRightPoints(dLeftRightParams,
+                                    normlzdSensMatrixPolySvd, normlzdCurvMatrix,
+                                    normlzd_dpMid,
+                                    normlzdLeftSensMatrix, normlzdRightSensMatrix,
+                                    numMetrics)
     
 
     if doMaximizeRatio or doBootstrapSampling:
@@ -464,11 +557,15 @@ def main(args):
 
     # Set up a column vector of metric values from the global simulation based on optimized
     #     parameter values.
-    globTunedMetricValsCol = setUpDefaultMetricValsCol(metricsNames, globTunedNcFilename)
 
-    # Store biases in default simulation, ( global_model - obs )
-    globTunedBiasesCol = np.subtract(globTunedMetricValsCol, obsMetricValsCol)
-    #globTunedBiasesCol = globTunedBiasesCol + prescribedBiasesCol
+    if globTunedNcFilename is None:
+        globTunedBiasesCol = np.zeros_like(obsMetricValsCol)
+    else:
+        globTunedMetricValsCol = setUpDefaultMetricValsCol(metricsNames, globTunedNcFilename)
+
+        # Store biases in default simulation, ( global_model - obs )
+        globTunedBiasesCol = np.subtract(globTunedMetricValsCol, obsMetricValsCol)
+        #globTunedBiasesCol = globTunedBiasesCol + prescribedBiasesCol
 
     # Check whether the minimizer actually reduces chisqd
     # Initial value of chisqd, which assumes parameter perturbations are zero
