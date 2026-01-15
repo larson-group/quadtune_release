@@ -62,7 +62,7 @@ def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics_filename:
     normlzdOrdDparamsMax = np.tile(np.max(params_dataset_no_ctrl.values[:,paramsIndices],axis=0)/np.abs(default_params) - np.ones_like(default_params),(len(metricsNames),1))
 
 
-    '''Solve the linear system multiple times with for different metrics, to create the sensitivity and curvature matrix'''
+    '''Solve the linear system for each metric, to create the sensitivity and curvature matrix'''
     right_sides= np.zeros((params_dataset_no_ctrl.shape[0],len(metricsNames)))
     
 
@@ -174,11 +174,6 @@ def get_PPE_obs_metrics_weights(PPE_metrics_filename:str, metricsNames:list[str]
 
     obsMetrics = metrics_dataset[metricsNames].to_array(dim="metricsName").isel(time=0,product=1,ens_idx=0)
 
-
-    #This expects the length of all prefixes to be 4
-    # weightsNames =["numb" + name[4:] for name in metricsNames]
-
-
     obsWeights = metrics_dataset["weights"].values
 
     # check if only a single obsWeight was given. If so, extend it to all metrics
@@ -193,7 +188,13 @@ def get_PPE_obs_metrics_weights(PPE_metrics_filename:str, metricsNames:list[str]
 
 
 def setUp_x_ObsMetricValsDictPPE(obsMetrics,obsWeights,metricsNames):
-
+    """
+    Create a dict in the same style it has for regular data
+    
+    :param obsMetrics: Metrics for the obeservational data
+    :param obsWeights: Weights for the observational data (Either one value for all metrics or one value for each)
+    :param metricsNames: Names of the Metrics e.g. "SWCF_1_1"
+    """
     obsWeightsDict = {}
 
     obsMetricsDict = {}
