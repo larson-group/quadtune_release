@@ -1,0 +1,92 @@
+commit eea690ee698c3ac613e0672aa622f19774730603
+Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
+Date:   Tue Jan 13 13:11:52 2026 -0700
+
+    adding a space
+
+commit fb5a90f3598c0039099cae484bbefc7c88948af5
+Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
+Date:   Tue Jan 13 11:44:24 2026 -0700
+
+    Adding capability to weight certain regions more (or less) than others. (#28)
+    
+    * Adding capability to weight certain regions more (or less) than others.
+    
+    * Setting doWeightRegions flag to false by default.
+    
+    * Removing commented print statements
+    
+    * Addressing code comments, including moving reweighting code into
+    its own function.
+
+commit 0536745f3d806f47af275ba63d8b1566b389ffa9
+Author: vlarson <vincent.e.larson@gmail.com>
+Date:   Tue Jan 6 10:01:14 2026 -0600
+
+    Add type hint to test_v1_paper_tuning and fix a typo.
+
+commit 2724ec41eddbe10f2e24cbab1c7363d4203ec64e
+Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
+Date:   Sun Dec 14 13:40:12 2025 -0700
+
+    Solution bounds (#26)
+    
+    * Adding solution bounds so the user can limit
+    optimized parameters to within the tested range.
+    
+    * Adding flag to config files and config_core output.
+    
+    * Addressing PR comments.
+    
+    * Fixing oversights.
+
+commit 993288c127d6aaf59881e85c8264528211a09b25
+Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
+Date:   Mon Dec 8 10:11:28 2025 -0700
+
+    Ben now prints default parameter values and makes penaltyCoef an array (#24)
+    
+    * Prints default value of parameters along with optimized values.
+    
+    * Makes penaltyCoef into an array, so that different metric fields
+    can have different penalties.  penaltyCoef should be the same
+    length as the varPrefixes array.  There is now a test that tests that they have
+    the same length with an exit if this fails.
+
+commit a447c3a511b26587e97cd8ee3ca2ba6dbdae15ee
+Author: nobrewittwer <nils.wittwer@gmx.de>
+Date:   Thu Dec 4 11:21:09 2025 -0600
+
+    renamed chosen_delta_params to recovery_test_dparams
+
+commit 67e307fbbbc8f98c1fed6a816df20debdd62768e
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Mon Dec 1 19:30:17 2025 -0600
+
+    Left comment for numMetricsToTune for when we want to tune for all variables in varPrefixes.
+
+commit ade9883e6f8e05a2fa3044f525f08239e08940cb
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Mon Dec 1 11:13:08 2025 -0600
+
+    Optimized the ratio from the generalized eigenvalue problem  (#13)
+    
+    * Optimized the ratio from the generalized eigenvalue problem with COBYLA and basinhopping (linear and nonlinear)
+    
+    * Added changes according to the review
+
+commit 30f88a03d256f61688c0421600145238296a9534
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Fri Nov 21 14:09:36 2025 -0600
+
+    Add parentheses to a sentence in README.md.
+
+commit 4b86499e908f227372d390133cd6cf6742c93d6f
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Tue Nov 11 17:24:56 2025 -0600
+
+    Added SST4K sensitivity plots and increased speed of createMapPanel (#12)
+    
+    * Added SST4K sensitivity plots and increased speed of createMapPanel
+    
+    * renamed and commented according to the review
