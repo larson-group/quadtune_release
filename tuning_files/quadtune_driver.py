@@ -96,33 +96,34 @@ def main(args):
          beVerbose) = \
             config_file.config_core()
         
-        paramsNames, paramsScales = read_PPE_files.get_PPE_paramNames(paramsNamesAndScales)
 
-        metricsNames, defaultMetricValsCol, metricsWeights = read_PPE_files.get_PPE_default_metrics_names_and_metrics_weights(PPE_metrics_filename,varPrefixes,boxSize)
+        defaultParamValsOrigRow, PPE_params, paramsNames, paramsIndices, paramsScales, magParamValsRow, normlzdOrdDparamsMinFlat, normlzdOrdDparamsMaxFlat =\
+            read_PPE_files.process_PPE_params_file(PPE_params_filename, paramsNamesAndScales, allparamsNamesInFile)
+        
 
-        metricGlobalAvgs = np.mean(defaultMetricValsCol.reshape(-1,len(varPrefixes)),axis=1)
+        defaultMetricValsCol, PPE_metrics, metricsNames, metricsWeights, obsMetricValsCol, obsWeightsCol =\
+              read_PPE_files.process_ppe_metrics_file(PPE_metrics_filename, varPrefixes, boxSize)
+        
 
-        obsMetricValsCol, obsWeightsCol = read_PPE_files.get_PPE_obs_metrics_weights(PPE_metrics_filename, metricsNames)
+        normlzdOrdDparamsMin = np.tile(normlzdOrdDparamsMinFlat,(len(metricsNames),1))
+        normlzdOrdDparamsMax = np.tile(normlzdOrdDparamsMaxFlat,(len(metricsNames),1))
+        
+        metricGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, len(varPrefixes), order='F').T,
+                                      defaultMetricValsCol.reshape(-1, len(varPrefixes), order='F')))
 
-        paramsIndices = read_PPE_files.get_PPE_param_idxs(allparamsNamesInFile,paramsNames)
 
-
-        defaultParamValsOrigRow = read_PPE_files.get_PPE_default_params(PPE_params_filename,paramsIndices)
-
-        obsMetricValsDict, obsWeightsDict = read_PPE_files.setUp_x_ObsMetricValsDictPPE(obsMetricValsCol.flatten(),obsWeightsCol.flatten(),metricsNames)
+        obsMetricValsDict, obsWeightsDict =\
+              read_PPE_files.setUp_x_ObsMetricValsDictPPE(obsMetricValsCol.flatten(),obsWeightsCol.flatten(),metricsNames)
 
         obsGlobalAvgCol, obsGlobalStdCol, obsWeightsCol = \
         calcObsGlobalAvgCol(varPrefixes,
                         obsMetricValsDict, obsWeightsDict)
         
+        
         metricsNorms = np.copy(obsGlobalAvgCol)
-
-
-        magParamValsRow = np.abs(defaultParamValsOrigRow)
 
         defaultBiasesCol = defaultMetricValsCol - obsMetricValsCol
 
-        metricsWeights /= np.sum(metricsWeights)
 
         normMetricValsCol = np.copy(metricsNorms)
         for idx in np.arange(len(metricsNorms)):
@@ -238,9 +239,9 @@ def main(args):
     print("Set up preliminaries . . .")
 
     if doUsePPEdata:
-        normlzdSensMatrixPoly,normlzdCurvMatrix, normlzdOrdDparamsMin, normlzdOrdDparamsMax = \
-            read_PPE_files.construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics_filename, PPE_params_filename, metricsNames, paramsIndices, normMetricValsCol)
-        
+        normlzdSensMatrixPoly,normlzdCurvMatrix =\
+            read_PPE_files.construct_sensitivity_curvature_matrices_from_PPE_data(\
+                PPE_metrics, defaultMetricValsCol, PPE_params, defaultParamValsOrigRow, normMetricValsCol, magParamValsRow)
         normlzdConstMatrix = np.zeros_like(normlzdCurvMatrix)
 
     else:
@@ -377,7 +378,7 @@ def main(args):
     normlzdCurvMatrixSvd = \
         approxMatrixWithSvd(normlzdCurvMatrix, sValsRatio, sValsNumToKeep=None, beVerbose=beVerbose)
 
-    if doPiecewise:
+    if not doUsePPEdata:
         # Check whether piecewise-linear and quadratic emulators agree at lo/hi parameter values
         dLeftRightParams = ( normlzd_pLeftRow - defaultParamValsOrigRow * np.reciprocal(magParamValsRow) ).T
         checkPiecewiseLeftRightPoints(dLeftRightParams,

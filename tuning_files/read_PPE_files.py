@@ -3,11 +3,118 @@ import xarray as xr
 import numpy as np
 
 
-
-
-def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics_filename: str, PPE_params_filename:str, metricsNames: np.ndarray, paramsIndices: np.ndarray, normMetricValsCol):
+def process_PPE_params_file(PPE_params_filename: str, paramsNamesAndScales: np.ndarray, allparamsNamesInFile: list[str]):
     """
-    Create Sensitivity and Curvature matrices from PPE data by repeatingly solving the system
+    Process the PPE parameter file and extract:
+        - default parameters
+        - all PPE parameters
+        - parameter Names and scales for plotting
+
+    :param PPE_params_filename: Path to a file containing parameters for a PPE
+    :param paramsNamesAndScales: 2D-Array containing the parameter names with their scales
+    :param allparamsNamesInFile: List containing all parameter names in the file
+    """
+
+    params_dataset = xr.open_dataset(PPE_params_filename,engine="netcdf4")
+
+    paramsNames, paramsScales = get_PPE_paramNames(paramsNamesAndScales)
+
+    paramsIndices = np.where(np.isin(allparamsNamesInFile, paramsNames))[0]
+
+
+
+    defaultParamValsOrigRow = params_dataset.where(params_dataset.ens_idx.str.match('ctrl'), drop= True).params.values[0,paramsIndices]
+
+
+
+
+    #PPE parameters without ctrl, validate, L00X and R00X ensemble members stored in numb_ensemble_members x num_params array
+    PPE_parameters = remove_ctrl_and_validate_runs_from_PPE(params_dataset).params.values[:,paramsIndices]
+
+
+
+    magParamValsRow = np.abs(defaultParamValsOrigRow)
+
+    minParams = np.min(PPE_parameters,axis=0)
+
+    maxParams = np.max(PPE_parameters,axis=0)
+
+    for idx, val in enumerate(magParamValsRow):
+        if val <= np.finfo(val.dtype).eps:
+            magParamValsRow[idx] = maxParams[idx]
+
+    normlzdOrdDparamsMinFlat = minParams/magParamValsRow - np.ones_like(defaultParamValsOrigRow)
+
+    normlzdOrdDparamsMaxFlat = maxParams/magParamValsRow - np.ones_like(defaultParamValsOrigRow)
+
+
+    magParamValsRow = magParamValsRow.reshape((1,-1))
+
+    defaultParamValsOrigRow = defaultParamValsOrigRow.reshape((1,-1))
+
+    return defaultParamValsOrigRow, PPE_parameters, paramsNames, paramsIndices, paramsScales, magParamValsRow, normlzdOrdDparamsMinFlat, normlzdOrdDparamsMaxFlat
+
+    
+
+
+def process_ppe_metrics_file(PPE_metrics_filename: str, varPrefixes:list[str], boxSize:int):
+    """
+    Process the PPE metrics file and extract:
+        - default metrics values
+        - all PPE metrics values
+        - metrics Names
+        - normalized metrics weights for the default case
+        - obs metrics values
+        - normalized obs metrics weights
+    
+    :param PPE_metrics_filename: Path to a file containing metrics for a PPE
+    :param varPrefixes: List containing the prefixes of the names of the used metrics
+    :param boxSize: Size of the boxes on the map
+
+    """
+
+    metrics_dataset = xr.open_dataset(PPE_metrics_filename,engine="netcdf4")
+
+    metricsNames = get_metrics_names(varPrefixes, boxSize)
+
+    weightsNames = get_weights_names(boxSize)
+
+    default_metrics_dataset = metrics_dataset.sel(ens_idx="ctrl")
+
+    PPE_metrics = remove_ctrl_and_validate_runs_from_PPE(metrics_dataset).isel(time=0,product=0)[metricsNames].to_array().values
+
+    metricsWeights = default_metrics_dataset.isel(time=0,product=0)[weightsNames].to_array(dim="metricsNames").to_numpy()
+
+    default_metrics = default_metrics_dataset.isel(time=0,product=0)[metricsNames]
+
+    defaultMetricValsCol = default_metrics[metricsNames].to_array().values.reshape((-1,1)) 
+
+    normlzdMetricsWeights = (metricsWeights/np.sum(metricsWeights)).reshape((-1,1))
+    
+
+    obsMetricValsCol = metrics_dataset[metricsNames].to_array(dim="metricsName").isel(time=0,product=1,ens_idx=0).to_numpy().reshape((-1,1))
+
+    obsWeightsCol = metrics_dataset["weights"].values
+
+    # check if only a single obsWeight was given. If so, use metricWeights instead
+    if len([obsWeightsCol])  == 1:
+        normlzdObsWeights = np.ones_like(metricsWeights) *obsWeightsCol
+    else:
+        normlzdObsWeights = obsWeightsCol/np.sum(obsWeightsCol)
+
+    
+    return defaultMetricValsCol, PPE_metrics, metricsNames, normlzdMetricsWeights, obsMetricValsCol, normlzdObsWeights
+
+
+
+
+    
+
+
+
+def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics:np.ndarray, default_metrics:np.ndarray, PPE_params:np.ndarray, default_params:np.ndarray, normMetricValsCol:np.ndarray, magParamValsRow:np.ndarray):
+    """
+    Create normalized Sensitivity and Curvature matrices from PPE data by repeatingly solving the system
 
     | dp_1(PPE1)  0.5dp_1^2(PPE1) dp_2(PPE1) ... |    |  ∂m_i/∂p_1  |    |dm_i(PPE1)|
     | dp_1(PPE2)  0.5dp_1^2(PPE2) dp_2(PPE2) ... |    |∂m_i^2/∂p_1^2|    |dm_i(PPE2)|
@@ -15,41 +122,31 @@ def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics_filename:
     |                ...                         |    |    ...      |    |   ...    |
 
     for different metrics m_i.
- 
+
+    Here dm_i(PPEj) = m_i(PPEj) - m_i(default).
     
-    :param PPE_metrics_filename: Name of the file containing the regional metrics
+    Parameters and metrics are getting normalized for the solving process.
 
-    :param PPE_parameter_filename: Name of the file containing the parameters of each PPE member
+    :param PPE_metrics: 2D-Array containing the metrics values for each PPE run (num_metrics x num_PPEs)
+    :param default_metrics: 2D-Array containing the default metrics values (num_metrics x 1)
+    :param PPE_params: 2D-Array containing the parameters values for each PPE run (num_PPEs x num_params)
+    :param default_params: 2D-Array containing the default parameters values (1 x num_params)
+    :param normMetricValsCol: 2D-Array containing the normalized metric values (num_metrics x 1)
+    :param magParamValsRow: 2D-Array containing the magnitude of parameter values (1 x num_params)
 
-    :param metricsNames: List containing the names of all used metrics
+
 
     """
 
-
-    '''Read in and preprocess data'''
-
-    metrics_dataset = xr.open_dataset(PPE_metrics_filename,engine="netcdf4")
-
-    params_dataset = xr.open_dataset(PPE_params_filename,engine="netcdf4")
-    
-    
-
-    default_metrics = metrics_dataset.sel(ens_idx="ctrl").isel(time=0,product=0)
-    
-    default_params = params_dataset.where(params_dataset.ens_idx.str.match('ctrl'), drop= True).params.values[0,paramsIndices]
-
-
-    metrics_dataset_no_ctrl, params_dataset_no_ctrl = preprocess_ppe_data(PPE_metrics_filename, PPE_params_filename)
-    metrics_dataset_no_ctrl = metrics_dataset_no_ctrl
-
     '''Create the static leftside matrix of the System'''
-    lin_system = np.empty((params_dataset_no_ctrl.shape[0],len(paramsIndices)*2))
+    lin_system = np.zeros((PPE_params.shape[0],len(default_params.flatten())*2))
+
     for i in range(lin_system.shape[0]):
 
-        lin_row_params = params_dataset_no_ctrl[i,:].values[paramsIndices]
-        
+        lin_row_params = PPE_params[i,:]
 
-        dnormlzdlin_row_params = (lin_row_params - default_params) / np.abs(default_params)
+
+        dnormlzdlin_row_params = (lin_row_params - default_params) / np.abs(magParamValsRow)
 
         dnormlzdquad_row_params = 0.5*dnormlzdlin_row_params**2
 
@@ -57,23 +154,15 @@ def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics_filename:
         full_row = np.dstack((dnormlzdlin_row_params,dnormlzdquad_row_params)).flatten()
         lin_system[i,:] = full_row
 
-    normlzdOrdDparamsMin = np.tile(np.min(params_dataset_no_ctrl.values[:,paramsIndices],axis=0)/np.abs(default_params) - np.ones_like(default_params),(len(metricsNames),1))
-
-    normlzdOrdDparamsMax = np.tile(np.max(params_dataset_no_ctrl.values[:,paramsIndices],axis=0)/np.abs(default_params) - np.ones_like(default_params),(len(metricsNames),1))
-
-
     '''Solve the linear system for each metric, to create the sensitivity and curvature matrix'''
-    right_sides= np.zeros((params_dataset_no_ctrl.shape[0],len(metricsNames)))
-    
+    right_sides= np.zeros((PPE_params.shape[0],len(normMetricValsCol)))
 
+    for metric_Idx in range(len(normMetricValsCol)):
 
-    for metric_Idx in range(len(metricsNames)):
+        metrics_values = PPE_metrics[metric_Idx]
+        metric_default = default_metrics[metric_Idx]
 
-        metrics_values = metrics_dataset_no_ctrl[metricsNames[metric_Idx]] 
-        metric_default = default_metrics[metricsNames[metric_Idx]]
-
-        right_sides[:,metric_Idx] = (metrics_values - metric_default) / -(normMetricValsCol[0])
-
+        right_sides[:,metric_Idx] = (metrics_values - metric_default) / np.abs((normMetricValsCol[0]))
 
 
     derivatives = np.linalg.lstsq(lin_system,right_sides)[0] 
@@ -82,8 +171,7 @@ def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics_filename:
     normlzdSensMatrix = derivatives[::2].T
     normlzdCurvMatrix = derivatives[1::2].T
 
-    return normlzdSensMatrix, normlzdCurvMatrix, normlzdOrdDparamsMin, normlzdOrdDparamsMax
-
+    return normlzdSensMatrix, normlzdCurvMatrix
 
 
 
@@ -100,94 +188,44 @@ def get_PPE_paramNames(paramsNamesAndScales:np.ndarray):
 
     return paramsNames, paramsScales
 
-
-
-def get_PPE_default_metrics_names_and_metrics_weights(PPE_metrics_filename:str, varPrefixes:list[str],boxSize):
+def get_metrics_names(varPrefixes:list[str], boxSize:int):
     """
-    Extract the names of the used metrics, and the corresponding weights for the default case.
+    Create a array containing the names of the metrics
     
-    :param PPE_metrics_filename: Path to the file containing the metrics data
-
     :param varPrefixes: List containing the prefixes of the used names of the used metrics
-
-    :param boxSize: Size of the boxes on the map
-
+    :param boxSize: Size of the boxes over which the global data is averaged
     """
-
-    metrics_dataset = xr.open_dataset(PPE_metrics_filename,engine="netcdf4")
-
-    default_metrics = metrics_dataset.sel(ens_idx="ctrl").isel(time=0,product=0)
-
-
-
-    '''Create list containing all names of the used metrics'''
     metricsNames = []
-    weightsNames = []
 
     for varPrefix in varPrefixes:
         for i in range(1,(180//boxSize)+1):
             for j in range(1,(360//boxSize)+1):
                 metricsNames.append(f"{varPrefix}_{i}_{j}")
-                weightsNames.append(f"numb_{i}_{j}")
 
-    metricsWeights = default_metrics[weightsNames].to_array(dim="metricsNames").to_numpy()
+    metricsNames = np.array(metricsNames)
 
-
-    return  np.array(metricsNames), default_metrics[metricsNames].to_array().values.reshape((-1,1)), metricsWeights.reshape((-1,1))
+    return metricsNames
 
 
-
-def get_PPE_default_params(PPE_params_filename:str, paramsIndices: np.ndarray):
+def get_weights_names(boxSize:int):
     """
-    Extract the default parameters from the PPE file
+    Create a array containing the names of the metrics weights
     
-    :param PPE_params_filename: The file containing the PPE parameters
-    ;param paramsIndices
-    """
-    params_dataset = xr.open_dataset(PPE_params_filename,engine="netcdf4")
-    default_params = params_dataset.where(params_dataset.ens_idx.str.match('ctrl'), drop= True).params.values
-
-    return default_params[0, paramsIndices].reshape((1,-1))
-
-
-def get_PPE_param_idxs(allparamsNamesInFile: np.ndarray, paramsNames: np.ndarray):
-    """
-    Computes the indices of the used parameters in the list of all parameters
-    
-    :param allparamsNamesInFile: Numpy array containing all parameters in the file
-    :param paramsNames: Numpy array containing the parameters which should be used by QuadTune
+    :param boxSize: Size of the boxes over which the global data is averaged
     """
 
-    return np.where(np.isin(allparamsNamesInFile, paramsNames))[0]
+    weightsNames = []
 
-    
+    for i in range(1,(180//boxSize)+1):
+        for j in range(1,(360//boxSize)+1):
+            weightsNames.append(f"numb_{i}_{j}")
 
-def get_PPE_obs_metrics_weights(PPE_metrics_filename:str, metricsNames:list[str]):
-    """
-    Extract the obs metricsWeights from the PPE file
-    
-    :param PPE_metrics_filename: Path to the file containing the metrics data
-    :param metricsNames: List containing all names of the used metrics
-    """
+    weightsNames = np.array(weightsNames)
 
-    metrics_dataset = xr.open_dataset(PPE_metrics_filename,engine="netcdf4")
-
-    obsMetrics = metrics_dataset[metricsNames].to_array(dim="metricsName").isel(time=0,product=1,ens_idx=0)
-
-    obsWeights = metrics_dataset["weights"].values
-
-    # check if only a single obsWeight was given. If so, extend it to all metrics
-    if len([obsWeights])  == 1:
-        helper_array = np.ones(len(metricsNames)) * obsWeights
-        obsWeights = helper_array
+    return weightsNames
 
 
-    normlzdObsWeights = obsWeights/np.sum(obsWeights)
-
-    return obsMetrics.to_numpy().reshape((-1,1)), normlzdObsWeights.reshape((-1,1))
-
-
-def setUp_x_ObsMetricValsDictPPE(obsMetrics,obsWeights,metricsNames):
+def setUp_x_ObsMetricValsDictPPE(obsMetrics: np.ndarray, obsWeights:np.ndarray, metricsNames:list[str]):
     """
     Create a dict in the same style it has for regular data
     
@@ -206,26 +244,17 @@ def setUp_x_ObsMetricValsDictPPE(obsMetrics,obsWeights,metricsNames):
 
     return obsMetricsDict, obsWeightsDict
 
-def preprocess_ppe_data(PPE_metrics_filename,PPE_parameter_filename):
+
+def remove_ctrl_and_validate_runs_from_PPE(ppe_dataset:xr.Dataset):
     """
     Removes ctrl, validate and Hxxx, Lxx runs from the PPE
     
-    :param PPE_metrics_filename: File containing the regional PPE metrics
-    :param PPE_parameter_filename: File containing the PPE parameters
+    :param ppe_dataset: File containing the either PPE metrics or parameters
+
     """
 
-    metrics_dataset = xr.open_dataset(PPE_metrics_filename,engine="netcdf4")
-    params_dataset = xr.open_dataset(PPE_parameter_filename,engine="netcdf4")
+    mask = ~ppe_dataset["ens_idx"].str.match(r"^(ctrl|validate|H|L)")
+     
+    sanitized_ppe_data = ppe_dataset.sel(ens_idx=mask)
 
-    mask = metrics_dataset["ens_idx"].str.match(r"^(ens|hm)")
-
-    if not mask.any():
-        mask = ~params_dataset.ens_idx.str.match('ctrl')
-
-    
-    preprocessed_metrics = metrics_dataset.isel(time=0,product=0).sel(ens_idx=mask)
-    preprocessed_parameters = params_dataset.params.sel(ens_idx=mask)
-
-
-    return preprocessed_metrics, preprocessed_parameters
-
+    return sanitized_ppe_data
