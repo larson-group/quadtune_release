@@ -225,12 +225,12 @@ def get_weights_names(boxSize:int):
     return weightsNames
 
 
-def setUp_x_ObsMetricValsDictPPE(obsMetrics: np.ndarray, obsWeights:np.ndarray, metricsNames:list[str]):
+def setUp_x_ObsMetricValsDictPPE(obsMetrics: np.ndarray, obsWeights:np.ndarray, metricsNames:np.ndarray):
     """
     Create a dict in the same style it has for regular data
     
     :param obsMetrics: Metrics for the obeservational data
-    :param obsWeights: Weights for the observational data (Either one value for all metrics or one value for each)
+    :param obsWeights: Weights for the observational data
     :param metricsNames: Names of the Metrics e.g. "SWCF_1_1"
     """
     obsWeightsDict = {}
