@@ -418,7 +418,7 @@ def main(args):
     #print("Tuned parameter perturbation values (dnormzldParamsSolnNonlin)")
     #for idx in range(0,len(paramsNames)): \
     #    print("{:33s} {:7.7g}".format(paramsNames[idx], dnormlzdParamsSolnNonlin[idx][0] ) )
-    print("\nTuned parameter values (paramsSolnNonlin)          Default value")
+    print("\nTuned parameter values (paramsSolnNonlin)           Default value")
     for idx in range(0,len(paramsNames)): \
         print("{:33s} {:15.7f} {:15.7f}".format(paramsNames[idx], paramsSolnNonlin[idx][0], defaultParamValsOrigRow[0][idx] ) )
 
