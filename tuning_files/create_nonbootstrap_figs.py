@@ -224,8 +224,9 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
 
     magParamValsRowMasked = magParamValsRow.T[maskParamsNames].T
 
-    sensNcFilenamesMasked = np.ma.masked_array(sensNcFilenames, np.logical_not(maskParamsNames)).compressed()
-    sensNcFilenamesExtMasked = np.ma.masked_array(sensNcFilenamesExt, np.logical_not(maskParamsNames)).compressed()
+    if sensNcFilenames is not None:
+        sensNcFilenamesMasked = np.ma.masked_array(sensNcFilenames, np.logical_not(maskParamsNames)).compressed()
+        sensNcFilenamesExtMasked = np.ma.masked_array(sensNcFilenamesExt, np.logical_not(maskParamsNames)).compressed()
 
     metricsSensMasked = metricsSens[whitelistedMetricsMask]
 
@@ -3843,7 +3844,7 @@ def createLossFncVsParamPanels(
 
         fig.update_layout(
             title = f"Loss function vs. parameter {paramsNames[idx]}, with other parameters at QuadTuned values",
-            xaxis_title = "Parameter Value",
+            xaxis_title = "Normalized Parameter Value",
             yaxis_title = "Loss Function Value",
             legend = dict(x = 0.02, y = 0.98)
         )
