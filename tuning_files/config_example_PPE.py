@@ -104,12 +104,12 @@ def config_core():
         'zmconv_tau',
         'zmconv_dmpdz',
         'zmconv_micro_dcs',
-        'zmconv_auto_fac',
-        'zmconv_accr_fac',
-        'zmconv_ke',
         'nucleate_ice_subgrid',
         'p3_nc_autocon_expon',
         'p3_qc_accret_expon',
+        'zmconv_auto_fac',
+        'zmconv_accr_fac',
+        'zmconv_ke',
         'cldfrc_dp1',
         'p3_embryonic_rain_size',
         'p3_mincdnc'
@@ -124,15 +124,15 @@ def config_core():
         ['zmconv_tau',1.0e0],
         ['zmconv_dmpdz',1.0e0],
         ['zmconv_micro_dcs',1.0e0],
-        ['zmconv_auto_fac',1.0e0],
-        ['zmconv_accr_fac',1.0e0],
-        ['zmconv_ke',1.0e0],
         ['nucleate_ice_subgrid',1.0e0],
         ['p3_nc_autocon_expon',1.0e0],
         ['p3_qc_accret_expon',1.0e0],
+        ['zmconv_auto_fac',1.0e0],
+        ['zmconv_accr_fac',1.0e0],
+        ['zmconv_ke',1.0e0],
         ['cldfrc_dp1',1.0e0],
         ['p3_embryonic_rain_size',1.0e0],
-        ['p3_mincdnc',1.0e0]
+        # ['p3_mincdnc',1.0e0]
     ]
     )
 
@@ -215,6 +215,7 @@ def config_plots(beVerbose: bool, varPrefixes:list[str], paramsNames:list[str]) 
         'lossFncVsParamFig': True,                 # 2D loss function plots
         'SST4KPanelGallery': True                  # Maps showing metrics perturbation for parameters from Generalized Eigenvalue problem
     }
+
 
     if beVerbose:
         print(f"Creating {sum(createPlotType.values())} types of plots.")

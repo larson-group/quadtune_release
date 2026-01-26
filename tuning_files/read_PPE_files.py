@@ -98,7 +98,7 @@ def process_ppe_metrics_file(PPE_metrics_filename: str, varPrefixes:list[str], b
 
     # check if only a single obsWeight was given. If so, use metricWeights instead
     if len([obsWeightsCol])  == 1:
-        normlzdObsWeights = np.ones_like(metricsWeights) *obsWeightsCol
+        normlzdObsWeights = normlzdMetricsWeights
     else:
         normlzdObsWeights = obsWeightsCol/np.sum(obsWeightsCol)
 

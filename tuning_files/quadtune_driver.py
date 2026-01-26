@@ -200,7 +200,7 @@ def main(args):
     # metricGlobalAvgs is based on the default test (defaultNcFilename) for the ensemble 
     # (see the lines of code immediately above this)
     for prefix_idx in range(len(varPrefixes)):
-        print(f"metricGlobalAvgs for {varPrefixes[prefix_idx]} = ", metricGlobalAvgs[prefix_idx])
+        print(f"metricGlobalAvgs from default simulation for {varPrefixes[prefix_idx]} = ", metricGlobalAvgs[prefix_idx])
 
     # recalculate metricsWeights if we are using custom weighting on certain regions (i.e. doWeightRegions = True)
     # ***metricsWeights SHOULD NOT be altered after this point***
@@ -210,6 +210,10 @@ def main(args):
     if doCreatePlots:
         createPlotType, highlightedMetricsToPlot, mapVarIdx, abbreviateParamsNames  = \
             config_file.config_plots(beVerbose, varPrefixes = varPrefixes, paramsNames = paramsNames)
+        
+        if createPlotType["threeDotFig"] and (doUsePPEdata):
+            print("Error: threeDotFig is not supported for PPE data.")
+            sys.exit(1)
 
         paramsAbbrv = process_config_info.abbreviate_params_names(paramsNames, abbreviateParamsNames)
 
