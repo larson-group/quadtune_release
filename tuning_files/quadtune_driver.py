@@ -1175,8 +1175,9 @@ def solveUsingNonlin(metricsNames,
     #          = -defaultBiasesCol - (   defaultBiasesApproxNonlin   )
     #          = -defaultBiasesCol -              fwdFnc
     #          = normlzdResid * abs(normMetricValsCol)
-    #  where f0 = defaultBiasesCol + obsMetricValsCol,
-    #        y_i = obsMetricValsCol.
+    #          = - "residual bias" as defined in Eq. 12 of v1 paper.
+    #   Here, f0 = defaultBiasesCol + obsMetricValsCol,
+    #         y_i = obsMetricValsCol.
     #  globTunedBiases = forward global model soln - obs
     #                =                    -global_resid
     defaultBiasesApproxNonlin = normlzdWeightedDefaultBiasesApproxNonlin \
