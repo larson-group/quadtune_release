@@ -1,3 +1,9 @@
+commit e8d3492668b396d86ad2fcbf26a5c1e1ef9904cc
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Wed Jan 28 23:35:16 2026 -0600
+
+    Updating the quadtune version file
+
 commit 8588e5e83904b2df4441fe48a65455a6417030c3
 Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
 Date:   Mon Jan 26 10:35:37 2026 -0600
@@ -85,13 +91,3 @@ Author: Vincent Larson <vlarson@users.noreply.github.com>
 Date:   Mon Dec 1 19:30:17 2025 -0600
 
     Left comment for numMetricsToTune for when we want to tune for all variables in varPrefixes.
-
-commit ade9883e6f8e05a2fa3044f525f08239e08940cb
-Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
-Date:   Mon Dec 1 11:13:08 2025 -0600
-
-    Optimized the ratio from the generalized eigenvalue problem  (#13)
-    
-    * Optimized the ratio from the generalized eigenvalue problem with COBYLA and basinhopping (linear and nonlinear)
-    
-    * Added changes according to the review
