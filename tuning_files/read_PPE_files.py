@@ -94,16 +94,15 @@ def process_ppe_metrics_file(PPE_metrics_filename: str, varPrefixes:list[str], b
 
     obsMetricValsCol = metrics_dataset[metricsNames].to_array(dim="metricsName").isel(time=0,product=1,ens_idx=0).to_numpy().reshape((-1,1))
 
-    obsWeightsCol = metrics_dataset["weights"].values
 
     # check if only a single obsWeight was given. If so, use metricWeights instead
-    if len([obsWeightsCol])  == 1:
-        normlzdObsWeights = normlzdMetricsWeights
+    if "obs_weights" not in metrics_dataset.keys():  # This is the case for the file created by Zhun from the 2025 E3SM Zenodo archive
+        ObsWeights = metricsWeights
     else:
-        normlzdObsWeights = obsWeightsCol/np.sum(obsWeightsCol)
+        ObsWeights = metrics_dataset["obs_weights"].values # This is the case for the file created from Regional files
 
     
-    return defaultMetricValsCol, PPE_metrics, metricsNames, normlzdMetricsWeights, obsMetricValsCol, normlzdObsWeights
+    return defaultMetricValsCol, PPE_metrics, metricsNames, normlzdMetricsWeights, obsMetricValsCol, ObsWeights
 
 
 
@@ -162,7 +161,7 @@ def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics:np.ndarra
         metrics_values = PPE_metrics[metric_Idx]
         metric_default = default_metrics[metric_Idx]
 
-        right_sides[:,metric_Idx] = (metrics_values - metric_default) / np.abs((normMetricValsCol[0]))
+        right_sides[:,metric_Idx] = (metrics_values - metric_default) / np.abs((normMetricValsCol[metric_Idx]))
 
 
     derivatives = np.linalg.lstsq(lin_system,right_sides)[0] 

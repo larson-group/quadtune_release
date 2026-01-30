@@ -25,4 +25,8 @@ jobs:
 
       - name: Run test from v1 paper
         run: |
-          pytest
+          pytest -k 'v1_paper'
+
+      - name: Run fit quad emulator to ppe test
+        run: |
+          pytest -k 'fit_quad_emulator_to_ppe'

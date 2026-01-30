@@ -877,7 +877,7 @@ def main(args):
                 beVerbose,
                 useLongTitle=False, paramBoundsBoot=paramBoundsBoot)
 
-    return paramsSolnNonlin, paramsNames
+    return paramsSolnNonlin, paramsNames, normlzdSensMatrixPoly, normlzdCurvMatrix
 
 def normlzdSemiLinMatrixFnc(dnormlzdParams, normlzdSensMatrix, normlzdCurvMatrix, numMetrics):
     """Calculate semi-linear matrix, sensMatrix + curvMatrix*dp, for use in forward solution"""
