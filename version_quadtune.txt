@@ -1,3 +1,9 @@
+commit 43d7adce269f21a377a57edce5f1b9b6978503b6
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Thu Jan 29 23:34:48 2026 -0600
+
+    Updating the quadtune version file
+
 commit e8d3492668b396d86ad2fcbf26a5c1e1ef9904cc
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Wed Jan 28 23:35:16 2026 -0600
@@ -85,9 +91,3 @@ Author: nobrewittwer <nils.wittwer@gmx.de>
 Date:   Thu Dec 4 11:21:09 2025 -0600
 
     renamed chosen_delta_params to recovery_test_dparams
-
-commit 67e307fbbbc8f98c1fed6a816df20debdd62768e
-Author: Vincent Larson <vlarson@users.noreply.github.com>
-Date:   Mon Dec 1 19:30:17 2025 -0600
-
-    Left comment for numMetricsToTune for when we want to tune for all variables in varPrefixes.
