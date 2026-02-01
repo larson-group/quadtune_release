@@ -1,3 +1,9 @@
+commit 58281c52b93479ee2beffa73061815dd0a70412c
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Fri Jan 30 23:34:51 2026 -0600
+
+    Updating the quadtune version file
+
 commit 43d7adce269f21a377a57edce5f1b9b6978503b6
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Thu Jan 29 23:34:48 2026 -0600
@@ -85,9 +91,3 @@ Date:   Mon Dec 8 10:11:28 2025 -0700
     can have different penalties.  penaltyCoef should be the same
     length as the varPrefixes array.  There is now a test that tests that they have
     the same length with an exit if this fails.
-
-commit a447c3a511b26587e97cd8ee3ca2ba6dbdae15ee
-Author: nobrewittwer <nils.wittwer@gmx.de>
-Date:   Thu Dec 4 11:21:09 2025 -0600
-
-    renamed chosen_delta_params to recovery_test_dparams
