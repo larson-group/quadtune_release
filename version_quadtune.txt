@@ -1,3 +1,9 @@
+commit 7a629b62b119b374baa06353bd50fbed0ce07bdf
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Sat Jan 31 23:34:52 2026 -0600
+
+    Updating the quadtune version file
+
 commit 58281c52b93479ee2beffa73061815dd0a70412c
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Fri Jan 30 23:34:51 2026 -0600
@@ -78,16 +84,3 @@ Date:   Sun Dec 14 13:40:12 2025 -0700
     * Addressing PR comments.
     
     * Fixing oversights.
-
-commit 993288c127d6aaf59881e85c8264528211a09b25
-Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
-Date:   Mon Dec 8 10:11:28 2025 -0700
-
-    Ben now prints default parameter values and makes penaltyCoef an array (#24)
-    
-    * Prints default value of parameters along with optimized values.
-    
-    * Makes penaltyCoef into an array, so that different metric fields
-    can have different penalties.  penaltyCoef should be the same
-    length as the varPrefixes array.  There is now a test that tests that they have
-    the same length with an exit if this fails.
