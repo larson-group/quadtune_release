@@ -197,8 +197,8 @@ def get_metrics_names(varPrefixes:list[str], boxSize:int):
     metricsNames = []
 
     for varPrefix in varPrefixes:
-        for i in range(1,(180//boxSize)+1):
-            for j in range(1,(360//boxSize)+1):
+        for i in range(1,int(180/boxSize)+1):
+            for j in range(1,int(360/boxSize)+1):
                 metricsNames.append(f"{varPrefix}_{i}_{j}")
 
     metricsNames = np.array(metricsNames)
@@ -215,8 +215,8 @@ def get_weights_names(boxSize:int):
 
     weightsNames = []
 
-    for i in range(1,(180//boxSize)+1):
-        for j in range(1,(360//boxSize)+1):
+    for i in range(1,(int(180/boxSize)+1)):
+        for j in range(1,int(360/boxSize)+1):
             weightsNames.append(f"numb_{i}_{j}")
 
     weightsNames = np.array(weightsNames)
