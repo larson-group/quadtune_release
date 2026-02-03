@@ -1,3 +1,9 @@
+commit ee783bb3a8b326d965f6dde36c57e9f934d9995d
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Sun Feb 1 23:34:42 2026 -0600
+
+    Updating the quadtune version file
+
 commit 7a629b62b119b374baa06353bd50fbed0ce07bdf
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Sat Jan 31 23:34:52 2026 -0600
@@ -69,18 +75,3 @@ Author: vlarson <vincent.e.larson@gmail.com>
 Date:   Tue Jan 6 10:01:14 2026 -0600
 
     Add type hint to test_v1_paper_tuning and fix a typo.
-
-commit 2724ec41eddbe10f2e24cbab1c7363d4203ec64e
-Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
-Date:   Sun Dec 14 13:40:12 2025 -0700
-
-    Solution bounds (#26)
-    
-    * Adding solution bounds so the user can limit
-    optimized parameters to within the tested range.
-    
-    * Adding flag to config files and config_core output.
-    
-    * Addressing PR comments.
-    
-    * Fixing oversights.
