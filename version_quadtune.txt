@@ -1,3 +1,9 @@
+commit 9811060c039fb56b6a01c928ec328459cc0d6c9e
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Mon Feb 2 23:34:46 2026 -0600
+
+    Updating the quadtune version file
+
 commit ee783bb3a8b326d965f6dde36c57e9f934d9995d
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Sun Feb 1 23:34:42 2026 -0600
@@ -69,9 +75,3 @@ Date:   Tue Jan 13 11:44:24 2026 -0700
     
     * Addressing code comments, including moving reweighting code into
     its own function.
-
-commit 0536745f3d806f47af275ba63d8b1566b389ffa9
-Author: vlarson <vincent.e.larson@gmail.com>
-Date:   Tue Jan 6 10:01:14 2026 -0600
-
-    Add type hint to test_v1_paper_tuning and fix a typo.
