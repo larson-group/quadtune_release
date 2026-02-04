@@ -632,204 +632,23 @@ def main(args):
                                     normlzdCurvMatrix, numMetrics)
     #normlzdWeightedLinplusSensMatrixPoly = np.diag(np.transpose(metricsWeights)[0]) \
     #                                          @ normlzdLinplusSensMatrixPoly
-    if doMaximizeRatio:
-        print("-----------------Generalized Eigenvalue Problem and Ratio maximizing--------------------------\n")
+    if  doMaximizeRatio:
 
-        # normlzdLinplusSensMatrixPolySST4K = \
-        #     normlzdSemiLinMatrixFnc(dnormlzdParamsSolnNonlin, normlzdSensMatrixPolySST4K, normlzdCurvMatrixSST4K, numMetrics)
-        
-        # normlzdLinplusSensMatrixPolySST4K = normlzdSensMatrixPolySST4K
-        normlzdWeightedSensMatrixPolySST4K  = np.diag(metricsWeights.T[0]) @ normlzdSensMatrixPolySST4K
+        from maximize_SST4K_ratio import maximizeSST4KRatio
 
-        eigenvals, eigenvecs = eigh(a=normlzdWeightedSensMatrixPolySST4K.T @ normlzdWeightedSensMatrixPolySST4K ,\
-                                     b=normlzdWeightedSensMatrixPoly.T @ normlzdWeightedSensMatrixPoly )
-        
-        ratios = []
-        print(f"ParamsNames: {' '.join(paramsNames)}")
-        for idx, eigenval in enumerate(eigenvals):
-            eigenvec =  eigenvecs[:,idx]
-
-            print(f"Eigenvalue {idx}: {eigenval}, Eigenvector: {eigenvec}")
-            
-            ratios.append((eigenvec.T @ normlzdWeightedSensMatrixPolySST4K.T @ normlzdWeightedSensMatrixPolySST4K @ eigenvec) \
-                            / (eigenvec.T @ normlzdWeightedSensMatrixPoly.T @ normlzdWeightedSensMatrixPoly @ eigenvec))
-        
-        print(f"Ratios:",ratios)
-        assert np.allclose(ratios, eigenvals), "Ratios do not match eigenvalues!"
-
-        dnormlzdParamsMaxSST4K = eigenvecs[:,-1] 
-        print(f"Maximizing parameter perturbations: {dnormlzdParamsMaxSST4K}")   
-        print(f"Maximizing parameter values: {calc_dimensional_param_vals(dnormlzdParamsMaxSST4K,magParamValsRow,defaultParamValsOrigRow)}")
-
-
-        dnormlzdMetricsGenEig = fwdFnc(dnormlzdParamsMaxSST4K.reshape((-1,1)), normlzdWeightedSensMatrixPoly, normlzdCurvMatrix*0, \
-                           doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix,\
-                           numMetrics, normlzdInteractDerivs, interactIdxs)
-        
-        dnormlzdMetricsGenEigSST4K = fwdFnc(dnormlzdParamsMaxSST4K.reshape((-1,1)), normlzdWeightedSensMatrixPolySST4K, normlzdCurvMatrixSST4K*0, \
-                           doPiecewise, normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K,\
-                           numMetrics, normlzdInteractDerivs, interactIdxs)
-        
-        assert np.allclose(dnormlzdMetricsGenEigSST4K,normlzdWeightedSensMatrixPolySST4K @ dnormlzdParamsMaxSST4K.reshape((-1,1)) ),\
-              "Sanity check for fwdFnc with maximizing parameters failed for SST4K data"
-        
-        assert np.allclose(dnormlzdMetricsGenEig,normlzdWeightedSensMatrixPoly @ dnormlzdParamsMaxSST4K.reshape((-1,1)) ),\
-              "Sanity check for fwdFnc with maximizing parameters failed for PD data"
-        
-        
-        
-        def calc_SST4K_ratio(eigenvec: np.ndarray, doNonLin: bool):
-
-            normal= fwdFnc(eigenvec.reshape((-1,1)),normlzdSensMatrixPoly, normlzdCurvMatrix * doNonLin, \
-                           doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix,\
-                           numMetrics, normlzdInteractDerivs, interactIdxs)*metricsWeights 
-            sst4k   = fwdFnc(eigenvec.reshape((-1,1)), normlzdSensMatrixPolySST4K, normlzdCurvMatrixSST4K * doNonLin, \
-                           doPiecewise, normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K,\
-                           numMetrics, normlzdInteractDerivs, interactIdxs)*metricsWeights 
-            return -1. * (sst4k.T@sst4k)/(normal.T@normal)
-        
-    
-        
-
-        # Define the initial guess for the minimization
-        initial_optimization_guess = ((normlzdOrdDparamsMin[0] + normlzdOrdDparamsMax[0])/2)
-
-        # The iterable needs to be converted to a list, so that we can use bounds for both minimizations
-        bounds = list(zip(normlzdOrdDparamsMin[0], normlzdOrdDparamsMax[0]))
-
-        # Optimize the ratio using only the sensitivity matrix
-        doNonLin = False
-        res_lin = minimize(calc_SST4K_ratio, initial_optimization_guess,args=(doNonLin)\
-                       , method='COBYLA',bounds=bounds,options={'maxiter':40000,'tol':1e-18})
-        
-        
-
-        # Optimize the ratio using the sensitivity and curvature matrix
-        doNonLin = True
-        res_nonlin = minimize(calc_SST4K_ratio, res_lin.x,args=(doNonLin)\
-                       , method='COBYLA',bounds=bounds,options={'maxiter':40000,'tol':1e-18})
-
-
-        # Optimize the ratio using the sensitivity matrix using the basinhopping global optimizer
-        doNonLin = False
-        res_lin_basin = basinhopping(calc_SST4K_ratio,initial_optimization_guess,niter=10,
-                                     minimizer_kwargs={"method":"COBYLA","bounds":bounds,"options":{"maxiter":10000}, "args":(doNonLin),"tol":1e-16})
-
-        # Optimize the ratio using the sensitivity and curvature matrix using the basinhopping global optimizer
-        doNonLin = True
-        res_nonlin_basin = basinhopping(calc_SST4K_ratio,initial_optimization_guess,niter=10,
-                                     minimizer_kwargs={"method":"COBYLA","bounds":bounds,"options":{"maxiter":10000}, "args":(doNonLin),"tol":1e-16})
-        
-        
-
-
-
-        print(f"Result of linear optimization with COBYLA: {res_lin.x}, function value: {-1.*res_lin.fun}")
-        print(f"True Parameter: {calc_dimensional_param_vals(res_lin.x,magParamValsRow,defaultParamValsOrigRow).flatten()}")
-
-        print(f"Result of non-linear optimization with COBYLA: {res_nonlin.x}, function value: {-1.*res_nonlin.fun}")
-        print(f"True Parameter: {calc_dimensional_param_vals(res_nonlin.x,magParamValsRow,defaultParamValsOrigRow).flatten()}")
-
-        print(f"Result of linear optimization with basinhopping + COBYLA: {res_lin_basin.x}, function value: {-1.*res_lin_basin.fun} ")
-        print(f"True Parameter: {calc_dimensional_param_vals(res_lin_basin.x,magParamValsRow,defaultParamValsOrigRow).flatten()}")
-
-        print(f"Result of non-linear optimization with basinhopping + COBYLA: {res_nonlin_basin.x}, function value: {-1.*res_nonlin_basin.fun}")
-        print(f"True Parameter: {calc_dimensional_param_vals(res_nonlin_basin.x,magParamValsRow,defaultParamValsOrigRow).flatten()}")
-        
-
-
-        # Check if a larger maximum can be found if we perturb only one parameter
-        def check_for_minimum_across_one_axis(dParams,percentages=np.linspace(0.0,2,21),doNonLin=False):
-            for paramIdx in range(len(dParams)):
-                for percentage in percentages:
-                    current_params = np.copy(dParams)
-                    current_params[paramIdx] *= percentage
-
-                    assert (newMaximum := -1*calc_SST4K_ratio(current_params,doNonLin)) <= -1 * calc_SST4K_ratio(dParams,doNonLin), \
-                    f"Found new maximum with Parameter {paramIdx+1} multiplied with {percentage}. New maximum is: {newMaximum} \n"
-
-
-        check_for_minimum_across_one_axis(res_lin.x, doNonLin=False)
-        check_for_minimum_across_one_axis(res_nonlin.x, doNonLin=True)
-
-                
-
-        # Create values for plotting
-        """
-        These arrays contain the data for all plots.
-         - First index: 0 -> non-linear, 1 -> linear
-         - Second Index: 0 -> all parameters, 1-numParams -> Only using the parameter at index-1
-         - Third Index: Contains the actual data
-
-         Example: [0,2,:] contains the data for the linear problem using only the second parameter
-        """
-        MetricsSST4KMaxRatioParams = np.zeros((2,len(res_lin.x)+1,len(dnormlzdMetricsGenEig)))
-        MetricsMaxRatioParams = np.zeros((2,len(res_lin.x)+1,len(dnormlzdMetricsGenEig)))
-
-
-
-        MetricsSST4KMaxRatioParams[0,0,:] = fwdFnc(res_lin.x.reshape((-1,1)), normlzdSensMatrixPolySST4K, normlzdCurvMatrixSST4K * 0, \
-                            doPiecewise, normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K,\
-                            numMetrics, normlzdInteractDerivs, interactIdxs).flatten()
-        
-        MetricsMaxRatioParams[0,0,:]= fwdFnc(res_lin.x.reshape((-1,1)), normlzdSensMatrixPoly, normlzdCurvMatrix * 0, \
-                           doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix,\
-                           numMetrics, normlzdInteractDerivs, interactIdxs).flatten() 
-        
-        MetricsSST4KMaxRatioParams[1,0,:] = fwdFnc(res_nonlin.x.reshape((-1,1)), normlzdSensMatrixPolySST4K, normlzdCurvMatrixSST4K, \
-                            doPiecewise, normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K,\
-                            numMetrics, normlzdInteractDerivs, interactIdxs).flatten()
-        
-        MetricsMaxRatioParams[1,0,:]= fwdFnc(res_nonlin.x.reshape((-1,1)), normlzdSensMatrixPoly, normlzdCurvMatrix, \
-                           doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix,\
-                           numMetrics, normlzdInteractDerivs, interactIdxs).flatten()
-        
-        MetricsSST4KMaxRatioParams[0,0,:]*=metricsWeights.flatten()
-        MetricsSST4KMaxRatioParams[1,0,:]*=metricsWeights.flatten()
-
-        MetricsMaxRatioParams[0,0,:]*=metricsWeights.flatten()
-        MetricsMaxRatioParams[1,0,:]*=metricsWeights.flatten()
-
-        
-
-        for paramIdx in range(len(res_lin.x)):
-            single_parameter_vector = np.zeros_like(res_nonlin.x)
-            single_parameter_vector[paramIdx] = res_lin.x[paramIdx]
-
-            MetricsSST4KMaxRatioParams[0,paramIdx+1,:] = fwdFnc(single_parameter_vector.reshape((-1,1)), normlzdSensMatrixPolySST4K, normlzdCurvMatrixSST4K*0, \
-                            doPiecewise, normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K,\
-                            numMetrics, normlzdInteractDerivs, interactIdxs).flatten()
-            
-            MetricsMaxRatioParams[0,paramIdx+1,:]= fwdFnc(single_parameter_vector.reshape((-1,1)),normlzdSensMatrixPoly, normlzdCurvMatrix * 0, \
-                           doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix,\
-                           numMetrics, normlzdInteractDerivs, interactIdxs).flatten()
-            
-            single_parameter_vector[paramIdx] = res_nonlin.x[paramIdx]
-            
-            MetricsSST4KMaxRatioParams[1,paramIdx+1,:] = fwdFnc(single_parameter_vector.reshape((-1,1)), normlzdSensMatrixPolySST4K, normlzdCurvMatrixSST4K, \
-                            doPiecewise, normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K,\
-                            numMetrics, normlzdInteractDerivs, interactIdxs).flatten()
-            
-            MetricsMaxRatioParams[1,paramIdx+1,:]= fwdFnc(single_parameter_vector.reshape((-1,1)),normlzdSensMatrixPoly, normlzdCurvMatrix, \
-                           doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix, normlzdRightSensMatrix,\
-                           numMetrics, normlzdInteractDerivs, interactIdxs).flatten() 
-            
-            MetricsSST4KMaxRatioParams[0,paramIdx+1,:]*=metricsWeights.flatten()
-            MetricsSST4KMaxRatioParams[1,paramIdx+1,:]*=metricsWeights.flatten()
-
-            MetricsMaxRatioParams[0,paramIdx+1,:]*=metricsWeights.flatten()
-            MetricsMaxRatioParams[1,paramIdx+1,:]*=metricsWeights.flatten()
-
-
-        normalization_factor = res_lin.x[0]/dnormlzdParamsMaxSST4K[0]
-        assert np.allclose(dnormlzdParamsMaxSST4K * normalization_factor,res_lin.x), "Results from generalized Eigenvalue problem and COBYLA maxmization differ"
-
-        # Sanity checks
-        assert np.allclose(np.sum(MetricsMaxRatioParams[1,1:,:],axis=0),MetricsMaxRatioParams[1,0,:]), "fwdFnc with all parameters does not match sum over fwdFnc with one parameter at a time"
-        assert np.allclose(np.sum(MetricsSST4KMaxRatioParams[1,1:,:],axis=0),MetricsSST4KMaxRatioParams[1,0,:]), "fwdFnc with all parameters does not match sum over fwdFnc with one parameter at a time"
-
-
-        print("----------------------------------------------------------------------")
+        (dnormlzdMetricsGenEig, dnormlzdMetricsGenEigSST4K,
+            MetricsMaxRatioParams, MetricsSST4KMaxRatioParams) = \
+            maximizeSST4KRatio(normlzdSensMatrixPoly, normlzdCurvMatrix,
+                        normlzdSensMatrixPolySST4K, normlzdCurvMatrixSST4K,
+                        normlzdWeightedSensMatrixPoly,
+                        normlzdOrdDparamsMin, normlzdOrdDparamsMax,
+                        doPiecewise, normlzd_dpMid,
+                        normlzdLeftSensMatrix, normlzdRightSensMatrix,
+                        normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K,
+                        metricsWeights, numMetrics,
+                        magParamValsRow, defaultParamValsOrigRow,
+                        paramsNames,
+                        normlzdInteractDerivs, interactIdxs)
     # Create empty variables for the call of createFigs for the case where doMaximazeRatio = False and doCreatePlots=True.
     else: 
         dnormlzdMetricsGenEig = None
