@@ -1,3 +1,9 @@
+commit 381f9ff02285bf08b45cdf219ecfad0205ddc2a1
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Tue Feb 3 23:35:27 2026 -0600
+
+    Updating the quadtune version file
+
 commit 9811060c039fb56b6a01c928ec328459cc0d6c9e
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Mon Feb 2 23:34:46 2026 -0600
@@ -60,18 +66,3 @@ Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
 Date:   Tue Jan 13 13:11:52 2026 -0700
 
     adding a space
-
-commit fb5a90f3598c0039099cae484bbefc7c88948af5
-Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
-Date:   Tue Jan 13 11:44:24 2026 -0700
-
-    Adding capability to weight certain regions more (or less) than others. (#28)
-    
-    * Adding capability to weight certain regions more (or less) than others.
-    
-    * Setting doWeightRegions flag to false by default.
-    
-    * Removing commented print statements
-    
-    * Addressing code comments, including moving reweighting code into
-    its own function.
