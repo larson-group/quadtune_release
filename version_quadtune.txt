@@ -1,3 +1,9 @@
+commit e6c8c810fda5777cd8dacab197c12bc570bfc71a
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Wed Feb 4 23:35:34 2026 -0600
+
+    Updating the quadtune version file
+
 commit 381f9ff02285bf08b45cdf219ecfad0205ddc2a1
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Tue Feb 3 23:35:27 2026 -0600
@@ -60,9 +66,3 @@ Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
 Date:   Wed Jan 21 17:05:34 2026 -0700
 
     Adding one extra space for neat alignment
-
-commit eea690ee698c3ac613e0672aa622f19774730603
-Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
-Date:   Tue Jan 13 13:11:52 2026 -0700
-
-    adding a space
