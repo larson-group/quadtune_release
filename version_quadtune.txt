@@ -1,3 +1,9 @@
+commit 75cd5ed0453a677af4bf9afc73f4d1579d8add0c
+Author: pickett <larsongroupgithub@gmail.com>
+Date:   Thu Feb 5 23:35:39 2026 -0600
+
+    Updating the quadtune version file
+
 commit e6c8c810fda5777cd8dacab197c12bc570bfc71a
 Author: pickett <larsongroupgithub@gmail.com>
 Date:   Wed Feb 4 23:35:34 2026 -0600
@@ -60,9 +66,3 @@ Date:   Mon Jan 26 10:35:37 2026 -0600
     * Fixed minor errors in the documentation
     
     * Added changes according to the review and corrected the order of the parameters in the ppe data
-
-commit 6485b54eca7057ae15fc5eab4efbaca065aff70a
-Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
-Date:   Wed Jan 21 17:05:34 2026 -0700
-
-    Adding one extra space for neat alignment
