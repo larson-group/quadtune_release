@@ -673,7 +673,7 @@ def main(args):
                 varPrefixes, mapVarIdx, boxSize,
                 highlightedMetricsToPlot,
                 paramsNames, paramsAbbrv, transformedParamsNames, paramsScales,
-                metricsWeights, obsMetricValsCol, normMetricValsCol, magParamValsRow,
+                metricsWeights, obsWeightsCol, obsMetricValsCol, normMetricValsCol, magParamValsRow,
                 defaultBiasesCol, defaultBiasesApproxNonlin, defaultBiasesApproxElastic,
                 defaultBiasesApproxNonlinNoCurv, defaultBiasesApproxNonlin2xCurv,
                 normlzdDefaultBiasesCol,

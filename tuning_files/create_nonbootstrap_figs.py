@@ -42,7 +42,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                varPrefixes, mapVarIdx, boxSize,
                highlightedMetricsToPlot,
                paramsNames, paramsAbbrv, transformedParamsNames, paramsScales,
-               metricsWeights, obsMetricValsCol, normMetricValsCol, magParamValsRow,
+               metricsWeights, obsWeightsCol, obsMetricValsCol, normMetricValsCol, magParamValsRow,
                defaultBiasesCol, defaultBiasesApproxNonlin, defaultBiasesApproxElastic,
                defaultBiasesApproxNonlinNoCurv, defaultBiasesApproxNonlin2xCurv,
                normlzdDefaultBiasesCol,
@@ -925,6 +925,10 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
            globTunedLossChange[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdLinplusSensMatrixPoly[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdLinplusSensMatrixPolyColCenter[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           obsMetricValsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           obsWeightsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           normMetricValsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           metricsWeights[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            paramsAbbrv,
            downloadConfig,
            useLongTitle,
@@ -1269,6 +1273,8 @@ def createMapGallery(
     globTunedLossChange,
     normlzdLinplusSensMatrixPoly,
     normlzdLinplusSensMatrixPolyColCenter,
+    obsMetricValsCol, obsWeightsCol,
+    normMetricValsCol, metricsWeights,
     paramsAbbrv,
     downloadConfig,
     useLongTitle,
@@ -1304,7 +1310,7 @@ def createMapGallery(
                        colorScale='RdBu_r',
                        minField=minFieldBias,
                        maxField=maxFieldBias,
-                       panelLabel='(a)')
+                       panelLabel='')
 
 
     if useLongTitle:
@@ -1319,7 +1325,7 @@ def createMapGallery(
                        colorScale='RdBu_r',
                        minField=minFieldBias,
                        maxField=maxFieldBias,
-                       panelLabel='(b)')
+                       panelLabel='')
 
     BiasParamsDashboardChildren = [html.Div(children=[
         dcc.Graph(id="PcMapPanelBias", figure=PcMapPanelBias,
@@ -1327,6 +1333,58 @@ def createMapGallery(
         dcc.Graph(id="PcMapPanelResid", figure=PcMapPanelResid,
                   style={'display': 'inline-block'}, config=downloadConfig)
     ])]
+
+    #Denormalize and decenter the default-model bias in order to  recover the default-model solution
+    defaultMetricValsCol = (normlzdDefaultBiasesCol * np.abs(normMetricValsCol)) +obsMetricValsCol
+    
+    #Compute the weighted global average of the default metric values
+    metricGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, 1, order='F').T,
+                                      defaultMetricValsCol.reshape(-1, 1, order='F')))
+    
+    #Compute the weighted global average of the observed metric values
+    obsGlobalAvg = np.diag(np.dot(obsWeightsCol.reshape(-1,1,order='F').T, obsMetricValsCol.reshape(-1,1,order='F')))
+    
+    #normlzdResid is not a column vector, so it has to be reshaped such that resid is a column vector and can be used in future computations.
+    resid = (-normlzdResid.reshape(-1,1) * np.abs(normMetricValsCol))
+    quadtunedMetricsCol = resid + obsMetricValsCol
+
+    quadtuneMetricsGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, 1, order='F').T,
+                                      (resid + obsGlobalAvg).reshape(-1, 1, order='F'))) 
+
+    minFieldVals = np.minimum.reduce([ np.min(defaultMetricValsCol),
+                                        np.min(quadtunedMetricsCol),
+                                          np.min(obsMetricValsCol)])
+    maxFieldVals = np.maximum.reduce([ np.max(defaultMetricValsCol),
+                                        np.max(quadtunedMetricsCol),
+                                         np.max(obsMetricValsCol) ])
+    PcMapPanelDefault = \
+        createMapPanel(fieldToPlotCol=defaultMetricValsCol,
+                       plotWidth=plotWidth,
+                       plotTitle=f"Default Values (Global Avg:{metricGlobalAvgs})",
+                       boxSize=boxSize,
+                       colorScale='RdBu_r',
+                       minField=minFieldVals,
+                       maxField=maxFieldVals,
+                       panelLabel='')
+
+    
+
+    PcMapPanelQuadTune = \
+        createMapPanel(fieldToPlotCol=quadtunedMetricsCol,
+                       plotWidth=plotWidth,
+                       plotTitle=f"QuadTune Values (Global Avg:{quadtuneMetricsGlobalAvgs})",
+                       boxSize=boxSize,
+                       colorScale='RdBu_r',
+                       minField=minFieldVals,
+                       maxField=maxFieldVals,
+                       panelLabel='')
+    
+    BiasParamsDashboardChildren.append(html.Div(children=[
+        dcc.Graph(figure=PcMapPanelDefault,
+                  style={'display': 'inline-block'}, config=downloadConfig),
+        dcc.Graph(figure=PcMapPanelQuadTune,
+                  style={'display': 'inline-block'}, config=downloadConfig)
+    ]))
 
     if useLongTitle:
         plotTitle="Normalized Tuned Atmospheric-Model Bias, normlzdGlobTunedBiasesCol"
@@ -1340,13 +1398,24 @@ def createMapGallery(
                        colorScale='RdBu_r',
                        minField=minFieldBias,
                        maxField=maxFieldBias,
-                       panelLabel='(c)')
+                       panelLabel='')
+    
+    PcMapPanelObs = \
+        createMapPanel(fieldToPlotCol=obsMetricValsCol,
+                       plotWidth=plotWidth,
+                       plotTitle=f"Observed Metric Values (Global Avg:{obsGlobalAvg})",
+                       boxSize=boxSize,
+                       colorScale='RdBu_r',
+                       minField=minFieldVals,
+                       maxField=maxFieldVals,
+                       panelLabel='')
 
     BiasParamsDashboardChildren.append(html.Div(children=[
+        dcc.Graph(figure=PcMapPanelObs,
+            style={'display': 'inline-block'}, config=downloadConfig),
         dcc.Graph(figure=PcMapPanelGlobTuned,
-                  style={'display': 'inline-block'}, config=downloadConfig),
-        dcc.Graph(figure=blankFig,
                   style={'display': 'inline-block'}, config=downloadConfig)
+
     ]))
 
     sqrtDefaultLoss = -1e3*np.sqrt(defaultLossCol)
@@ -1606,8 +1675,10 @@ def createMapPanel(fieldToPlotCol,
     #fieldToPlotMatrix = np.roll(fieldToPlotMatrix, -9, axis=1)
 
     # Set color scaling for colors of regional boxes
-    latRange = range(90, -90, -boxSize)
-    lonRange = range(0, 360, boxSize)
+    # latRange = range(90, -90, -boxSize)
+    latRange = np.arange(90, -90, -boxSize)
+    # lonRange = range(0, 360, boxSize)
+    lonRange = np.arange(0, 360, boxSize)
     normlzdColorMatrix = np.zeros_like(fieldToPlotMatrix)
     if minField == None or maxField == None:
         minField = np.min(fieldToPlotMatrix)
@@ -1620,8 +1691,8 @@ def createMapPanel(fieldToPlotCol,
     if ( True ):
     #if ( maxField > 0) & (minField < 0):
         #colorScale = 'RdBu_r'
-        for latIdx, lat in np.ndenumerate(latRange):
-            for lonIdx, lon in np.ndenumerate(lonRange):
+        for latIdx, lat in enumerate(latRange):
+            for lonIdx, lon in enumerate(lonRange):
                 normlzdColorMatrix[latIdx, lonIdx] = \
                     0.5 * fieldToPlotMatrix[latIdx, lonIdx] / rangeField + 0.5
                 #if fieldToPlotMatrix[latIdx][lonIdx] < 0:
