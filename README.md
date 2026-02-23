@@ -11,7 +11,7 @@ typing  `pip install -r requirements.txt`  in your command line.
 
 The scripts in `create_regional_files` take output from 
 global atmospheric simulations and create regional files.
-See `create_regional_files/README_regional.md` for a
+See `create_regional_files/README_regional.md` for a 
 user guide for creating regional files.
 
 The scripts in `tuning_files` take the regional files,
