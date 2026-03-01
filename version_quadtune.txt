@@ -1,0 +1,84 @@
+commit 15541dcd4e0e653035df4ad30e99c173ea5467b6
+Author: Trevor Hancock <hancoct@uwm.edu>
+Date:   Mon Feb 23 15:26:16 2026 -0600
+
+    Added a space to test new python update scripts
+
+commit e816778f1f17d914d9a4fa78bf790dcb9ef797b5
+Author: Trevor Hancock <hancoct@uwm.edu>
+Date:   Wed Feb 11 17:06:36 2026 -0600
+
+    Removed double space to test Python update scripts
+
+commit 621ce5e530cd23b504a7012796f648381dba50c2
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Mon Feb 9 12:31:57 2026 -0600
+
+    Added plots showing the real metric values and global averages for default, obs and tuned predictions (#32)
+    
+    * Added plots showing the real metric values and global averages for default, obs and tuned predictions
+    
+    * Added changes according to the review
+
+commit 04bb5730eb4d12c1430ff8b2a12b9667d280e6c7
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Tue Feb 3 18:28:25 2026 -0600
+
+    Refactor ratio optimization (#31)
+    
+    * Created a new file for the ratio maximization to reduce the size of quadtune_driver
+    
+    * Changed docstring
+    
+    * Added changes according to the review
+
+commit 75cc3eed5be93cdf1d0f55a067e35fdc34dc6da0
+Author: nobrewittwer <nils.wittwer@gmx.de>
+Date:   Mon Feb 2 11:52:19 2026 -0600
+
+    Fixed an error that prevented using a non-integer boxSize for PPE data
+
+commit 5b3b01f923c4802234df2af835d6ed6bceb50099
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Thu Jan 29 18:25:09 2026 -0600
+
+    Test quadtune for ppe (#30)
+    
+    * Added a new test that checks if the new method to read in PPE data produces the same results as the old method
+    
+    * changed workflow to have steps for each test
+    
+    * Added comments and changed variable names according to the review
+
+commit ecdf5c6fe87ac967b23f351e51d5131f46af345e
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Thu Jan 29 16:39:11 2026 -0600
+
+    Note in comment that residual bias is defined to be the opposite of the statistical residual
+
+commit 8588e5e83904b2df4441fe48a65455a6417030c3
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Mon Jan 26 10:35:37 2026 -0600
+
+    Added a feature, that allows Quadtune to work with PPEs where multiple parameters are perturbed at once (#29)
+    
+    
+    * Added and corrected some DocStrings
+    
+    * Refactored the code to be more modular
+    
+    * Fixed minor errors in the documentation
+    
+    * Added changes according to the review and corrected the order of the parameters in the ppe data
+
+commit 6485b54eca7057ae15fc5eab4efbaca065aff70a
+Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
+Date:   Wed Jan 21 17:05:34 2026 -0700
+
+    Adding one extra space for neat alignment
+
+commit eea690ee698c3ac613e0672aa622f19774730603
+Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
+Date:   Tue Jan 13 13:11:52 2026 -0700
+
+    adding a space
