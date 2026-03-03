@@ -23,3 +23,4 @@ The scripts in `tests` are pytest tests which test the functionality of quadtune
 (You may need to initialize git lfs for your user account:  `git lfs install`.)  
 Then to run all tests, go to the `quadtune` directory and execute the command `pytest`.  
 To run specific tests, also go to the `quadtune` directory and execute the command `pytest -k ' {pattern found within one or more testfile names e.g. "v1" } `
+
