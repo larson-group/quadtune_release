@@ -25,6 +25,8 @@ from scipy.linalg import eigh
 from scipy.interpolate import UnivariateSpline
 from sklearn import linear_model
 
+import xarray as xr
+
 import argparse
 import sys
 
@@ -93,37 +95,90 @@ def main(args):
          debug_level, recovery_test_dparam,
          doSensParamBounds, 
          doWeightRegions, weightedRegionsDict,
+         doRegularizeByRegError, doRegularizeByMetricError, doRegularizeByRestrictingParamVals,
          beVerbose) = \
             config_file.config_core()
+
+
+
+        PPE_params = xr.open_dataset(PPE_params_filename,engine="netcdf4")
+        PPE_metrics = xr.open_dataset(PPE_metrics_filename,engine="netcdf4")
+
         
 
+        metricsNames = read_PPE_files.get_metrics_names(varPrefixes, boxSize)
+
+
+        if doMaximizeRatio:
+            PPE_params_filename_sst4k, PPE_metrics_filename_sst4k = config_file.config_additional(beVerbose)
+
+            PPE_params_sst4k = xr.open_dataset(PPE_params_filename_sst4k ,engine="netcdf4")
+            PPE_metrics_sst4k = xr.open_dataset(PPE_metrics_filename_sst4k ,engine="netcdf4")
+
+            PPE_params, PPE_metrics = read_PPE_files.restrict_by_common_members(PPE_params, PPE_metrics, PPE_params_sst4k)
+
+            if doRegularizeByRestrictingParamVals:
+                PPE_params_sst4k, PPE_metrics_sst4k, new_ctrl_idx = read_PPE_files.restrict_dataset_by_param(PPE_params_sst4k, PPE_metrics_sst4k, metricsNames, param_index=-1, lower_bound=100)
+
+
+            defaultMetricValsCol_sst4k, PPE_metrics_sst4k, _, _, _, _ = read_PPE_files.process_ppe_metrics_file(PPE_metrics_sst4k, varPrefixes, boxSize)
+
+            _, PPE_params_sst4k, _, _, _, _, _, _ =\
+            read_PPE_files.process_PPE_params_file(PPE_params_sst4k, paramsNamesAndScales, allparamsNamesInFile)
+
+        else:
+            new_ctrl_idx = None
+        
+        if doRegularizeByRestrictingParamVals:
+            PPE_params, PPE_metrics, min_loss = read_PPE_files.restrict_dataset_by_param(PPE_params, PPE_metrics, metricsNames, param_index=-1, lower_bound=100, min_loss=new_ctrl_idx)
+
+
+
+        if doRegularizeByMetricError:
+            PPE_params, PPE_metrics = read_PPE_files.restrict_dataset_by_metric_loss(PPE_params, PPE_metrics, varPrefixes, boxSize, 1)
+
+        
+
+
+        
         defaultParamValsOrigRow, PPE_params, paramsNames, paramsIndices, paramsScales, magParamValsRow, normlzdOrdDparamsMinFlat, normlzdOrdDparamsMaxFlat =\
-            read_PPE_files.process_PPE_params_file(PPE_params_filename, paramsNamesAndScales, allparamsNamesInFile)
+            read_PPE_files.process_PPE_params_file(PPE_params, paramsNamesAndScales, allparamsNamesInFile)
+        
+
+
         
 
         defaultMetricValsCol, PPE_metrics, metricsNames, metricsWeights, obsMetricValsCol, obsWeightsCol =\
-              read_PPE_files.process_ppe_metrics_file(PPE_metrics_filename, varPrefixes, boxSize)
+              read_PPE_files.process_ppe_metrics_file(PPE_metrics, varPrefixes, boxSize)
         
-
-        normlzdOrdDparamsMin = np.tile(normlzdOrdDparamsMinFlat,(len(metricsNames),1))
-        normlzdOrdDparamsMax = np.tile(normlzdOrdDparamsMaxFlat,(len(metricsNames),1))
+        
         
         metricGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, len(varPrefixes), order='F').T,
                                       defaultMetricValsCol.reshape(-1, len(varPrefixes), order='F')))
+    
 
+        
 
         obsMetricValsDict, obsWeightsDict =\
-              read_PPE_files.setUp_x_ObsMetricValsDictPPE(obsMetricValsCol.flatten(),obsWeightsCol.flatten(),metricsNames)
+              read_PPE_files.setUp_x_ObsMetricValsDictPPE(obsMetricValsCol, obsWeightsCol, metricsNames, varPrefixes)
+
+
 
         obsGlobalAvgCol, obsGlobalStdCol, obsWeightsCol = \
         calcObsGlobalAvgCol(varPrefixes,
                         obsMetricValsDict, obsWeightsDict)
         
+        metricsNames = metricsNames.flatten()
         
+
+
+        normlzdOrdDparamsMin = np.tile(normlzdOrdDparamsMinFlat,(len(metricsNames),1))
+        normlzdOrdDparamsMax = np.tile(normlzdOrdDparamsMaxFlat,(len(metricsNames),1))
+
         metricsNorms = np.copy(obsGlobalAvgCol)
-
         defaultBiasesCol = defaultMetricValsCol - obsMetricValsCol
-
+        
+        
 
         normMetricValsCol = np.copy(metricsNorms)
         for idx in np.arange(len(metricsNorms)):
@@ -222,11 +277,13 @@ def main(args):
               config_file.config_bootstrap(beVerbose)
         
     if doMaximizeRatio or doBootstrapSampling:
-        folder_name_SST4K, defaultSST4KNcFilename = config_file.config_additional(beVerbose)
 
-        assert folder_name_SST4K != '', "folder_name_SST4K and defaultSST4KNcFilename must be provided if doCalcGenEig or doBootstrapSampling is True"
-        _, _ , sensSST4KNcFilenames, sensSST4KNcFilenamesExt  =\
-              process_config_info.process_paramsnames_scales_and_filesuffixes(paramsNamesScalesAndFilenames, folder_name_SST4K)
+        if not doUsePPEdata:
+            folder_name_SST4K, defaultSST4KNcFilename = config_file.config_additional(beVerbose)
+
+            assert folder_name_SST4K != '', "folder_name_SST4K and defaultSST4KNcFilename must be provided if doCalcGenEig or doBootstrapSampling is True"
+            _, _ , sensSST4KNcFilenames, sensSST4KNcFilenamesExt  =\
+                process_config_info.process_paramsnames_scales_and_filesuffixes(paramsNamesScalesAndFilenames, folder_name_SST4K)
 
 
     # Number of regional metrics, including all of varPrefixes including the metrics we're not tuning, plus custom regions.
@@ -245,7 +302,7 @@ def main(args):
     if doUsePPEdata:
         normlzdSensMatrixPoly,normlzdCurvMatrix =\
             read_PPE_files.construct_sensitivity_curvature_matrices_from_PPE_data(\
-                PPE_metrics, defaultMetricValsCol, PPE_params, defaultParamValsOrigRow, normMetricValsCol, magParamValsRow)
+                PPE_metrics, defaultMetricValsCol, PPE_params, defaultParamValsOrigRow, normMetricValsCol, magParamValsRow, doRegularizeByRegError)
         normlzdConstMatrix = np.zeros_like(normlzdCurvMatrix)
 
     else:
@@ -405,13 +462,26 @@ def main(args):
         #     construct numMetrics x numParams matrix of second derivatives, d2metrics/dparams2.
         #     The derivatives are normalized by observed metric values and max param values.
         # Also construct a linear sensitivity matrix, dmetrics/dparams.
-        normlzdCurvMatrixSST4K, normlzdSensMatrixPolySST4K, normlzdConstMatrixSST4K, \
-        normlzdOrdDparamsMinSST4K, normlzdOrdDparamsMaxSST4K, \
-        normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K, \
-        normlzd_pLeftRowSST4K, normlzd_pMidRowSST4K, normlzd_pRightRowSST4K = \
-            constructNormlzdSensCurvMatrices(metricsNames, paramsNames, transformedParamsNames,
-                                             normMetricValsCol, magParamValsRow,
-                                             sensSST4KNcFilenames, sensSST4KNcFilenamesExt, defaultSST4KNcFilename)
+
+        if not doUsePPEdata:
+            normlzdCurvMatrixSST4K, normlzdSensMatrixPolySST4K, normlzdConstMatrixSST4K, \
+            normlzdOrdDparamsMinSST4K, normlzdOrdDparamsMaxSST4K, \
+            normlzd_dpMidSST4K, normlzdLeftSensMatrixSST4K, normlzdRightSensMatrixSST4K, \
+            normlzd_pLeftRowSST4K, normlzd_pMidRowSST4K, normlzd_pRightRowSST4K = \
+                constructNormlzdSensCurvMatrices(metricsNames, paramsNames, transformedParamsNames,
+                                                normMetricValsCol, magParamValsRow,
+                                                sensSST4KNcFilenames, sensSST4KNcFilenamesExt, defaultSST4KNcFilename)
+        else:
+            normlzdSensMatrixPolySST4K,normlzdCurvMatrixSST4K =\
+            read_PPE_files.construct_sensitivity_curvature_matrices_from_PPE_data(\
+                PPE_metrics_sst4k, defaultMetricValsCol_sst4k, PPE_params_sst4k, defaultParamValsOrigRow, normMetricValsCol, magParamValsRow, doRegularizeByRegError)
+            normlzdLeftSensMatrixSST4K = None
+            normlzdRightSensMatrixSST4K = None
+            normlzd_dpMidSST4K = None
+
+            assert normlzdSensMatrixPolySST4K.shape == normlzdSensMatrixPoly.shape, "normlzdSensMatrixPolySST4K and normlzdSensMatrixPoly should have the same shape"
+            assert normlzdCurvMatrixSST4K.shape == normlzdCurvMatrix.shape, "normlzdCurvMatrixSST4K and normlzdCurvMatrix should have the same shape"
+                                
 
     #######################################################################################################
     #
@@ -516,9 +586,18 @@ def main(args):
     #print("Tuned parameter perturbation values (dnormzldParamsSolnNonlin)")
     #for idx in range(0,len(paramsNames)): \
     #    print("{:33s} {:7.7g}".format(paramsNames[idx], dnormlzdParamsSolnNonlin[idx][0] ) )
-    print("\nTuned parameter values (paramsSolnNonlin)           Default value")
-    for idx in range(0,len(paramsNames)): \
-        print("{:33s} {:15.7f} {:15.7f}".format(paramsNames[idx], paramsSolnNonlin[idx][0], defaultParamValsOrigRow[0][idx] ) )
+    if not doUsePPEdata:
+        print("\nTuned parameter values (paramsSolnNonlin)           Default value")
+        for idx in range(0,len(paramsNames)): \
+            print("{:33s} {:15.7f} {:15.7f}".format(paramsNames[idx], paramsSolnNonlin[idx][0], defaultParamValsOrigRow[0][idx] ) )
+    else:
+        print("\nTuned parameter values (paramsSolnNonlin)           Default value")
+
+        min_params = np.min(PPE_params, axis=0)
+        max_params = np.max(PPE_params, axis=0)
+        percentage_ranges = (paramsSolnNonlin.flatten() - min_params)/(max_params - min_params)
+        for idx in range(0,len(paramsNames)): \
+            print("{:33s} {:15.7f} [{:6.2%}] {:15.7f}".format(paramsNames[idx], paramsSolnNonlin[idx][0], percentage_ranges[idx], defaultParamValsOrigRow[0][idx] ) )
 
     # Check whether the minimizer actually reduces chisqd
     # Initial value of chisqd, which assumes parameter perturbations are zero

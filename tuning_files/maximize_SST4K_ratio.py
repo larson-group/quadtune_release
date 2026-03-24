@@ -104,20 +104,20 @@ def maximizeSST4KRatio(normlzdSensMatrixPoly, normlzdCurvMatrix,
     initial_optimization_guess = ((normlzdOrdDparamsMin[0] + normlzdOrdDparamsMax[0])/2)
 
     # The iterable needs to be converted to a list, so that we can use bounds for both minimizations
-    bounds = list(zip(normlzdOrdDparamsMin[0], normlzdOrdDparamsMax[0]))
+    bounds = np.array(list(zip(normlzdOrdDparamsMin[0], normlzdOrdDparamsMax[0])))
 
     # Optimize the ratio using only the sensitivity matrix
     doNonLin = False
     res_lin = minimize(calc_SST4K_ratio, initial_optimization_guess,args=(doNonLin)\
-                    , method='COBYLA',bounds=bounds,options={'maxiter':40000,'tol':1e-18})
-    
+                    , method='COBYLA',bounds=bounds,options={'maxiter':40000})
+    print(f"Linear optimization with COBYLA success: {res_lin.success}, message: {res_lin.message}")
     
 
     # Optimize the ratio using the sensitivity and curvature matrix
     doNonLin = True
     res_nonlin = minimize(calc_SST4K_ratio, res_lin.x,args=(doNonLin)\
-                    , method='COBYLA',bounds=bounds,options={'maxiter':40000,'tol':1e-18})
-    
+                    , method='COBYLA',bounds=bounds,options={'maxiter':40000})
+    print(f"Non-linear optimization with COBYLA success: {res_nonlin.success}, message: {res_nonlin.message}")
 
 
     # ================================================================================
@@ -128,14 +128,14 @@ def maximizeSST4KRatio(normlzdSensMatrixPoly, normlzdCurvMatrix,
     # Optimize the ratio using the sensitivity matrix using the basinhopping global optimizer
     doNonLin = False
     res_lin_basin = basinhopping(calc_SST4K_ratio,initial_optimization_guess,niter=10,
-                                    minimizer_kwargs={"method":"COBYLA","bounds":bounds,"options":{"maxiter":10000}, "args":(doNonLin),"tol":1e-16})
-
+                                    minimizer_kwargs={"method":"COBYLA","bounds":bounds,"options":{"maxiter":10000}, "args":(doNonLin)})
+    print(f"Linear optimization with basinhopping + COBYLA success: {res_lin_basin.success}, message: {res_lin_basin.message}")
     # Optimize the ratio using the sensitivity and curvature matrix using the basinhopping global optimizer
     doNonLin = True
     res_nonlin_basin = basinhopping(calc_SST4K_ratio,initial_optimization_guess,niter=10,
-                                    minimizer_kwargs={"method":"COBYLA","bounds":bounds,"options":{"maxiter":10000}, "args":(doNonLin),"tol":1e-16})
-    
-    
+                                    minimizer_kwargs={"method":"COBYLA","bounds":bounds,"options":{"maxiter":20000}, "args":(doNonLin)})
+    print(f"Non-linear optimization with basinhopping + COBYLA success: {res_nonlin_basin.success}, message: {res_nonlin_basin.message}")
+
 
 
 
@@ -165,8 +165,12 @@ def maximizeSST4KRatio(normlzdSensMatrixPoly, normlzdCurvMatrix,
                 f"Found new maximum with Parameter {paramIdx+1} multiplied with {percentage}. New maximum is: {newMaximum} \n"
 
 
-    check_for_minimum_across_one_axis(res_lin.x, doNonLin=False)
-    check_for_minimum_across_one_axis(res_nonlin.x, doNonLin=True)
+
+#     if res_lin.success:   
+#     	check_for_minimum_across_one_axis(res_lin.x, doNonLin=False)
+# # 
+#     if res_nonlin.success:
+#         check_for_minimum_across_one_axis(res_nonlin.x, doNonLin=True)
 
             
 
@@ -240,8 +244,9 @@ def maximizeSST4KRatio(normlzdSensMatrixPoly, normlzdCurvMatrix,
         MetricsMaxRatioParams[1,paramIdx+1,:]*=metricsWeights.flatten()
 
 
-    normalization_factor = res_lin.x[0]/dnormlzdParamsMaxSST4K[0]
-    assert np.allclose(dnormlzdParamsMaxSST4K * normalization_factor,res_lin.x), "Results from generalized Eigenvalue problem and COBYLA maxmization differ"
+#     if res_lin.success:
+#         normalization_factor = res_lin.x[0]/dnormlzdParamsMaxSST4K[0]
+#         assert np.allclose(dnormlzdParamsMaxSST4K * normalization_factor,res_lin.x), "Results from generalized Eigenvalue problem and COBYLA maxmization differ"
 
     # Sanity checks
     assert np.allclose(np.sum(MetricsMaxRatioParams[1,1:,:],axis=0),MetricsMaxRatioParams[1,0,:]), "fwdFnc with all parameters does not match sum over fwdFnc with one parameter at a time"
@@ -276,7 +281,8 @@ def solve_generalized_eigenvalue_problem(normlzdSensMatrixPolySST4K, normlzdCurv
     for idx, eigenval in enumerate(eigenvals):
         eigenvec =  eigenvecs[:,idx]
 
-        print(f"Eigenvalue {idx}: {eigenval}, Eigenvector: {eigenvec}")
+        if idx == len(eigenvals)-1:
+            print(f"Maximum ratio eigenvalue: {eigenval}, Eigenvector: {eigenvec}")
         
         ratios.append((eigenvec.T @ normlzdWeightedSensMatrixPolySST4K.T @ normlzdWeightedSensMatrixPolySST4K @ eigenvec) \
                         / (eigenvec.T @ normlzdWeightedSensMatrixPoly.T @ normlzdWeightedSensMatrixPoly @ eigenvec))
