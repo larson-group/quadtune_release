@@ -587,17 +587,16 @@ def main(args):
     #for idx in range(0,len(paramsNames)): \
     #    print("{:33s} {:7.7g}".format(paramsNames[idx], dnormlzdParamsSolnNonlin[idx][0] ) )
     if not doUsePPEdata:
-        print("\nTuned parameter values (paramsSolnNonlin)           Default value")
-        for idx in range(0,len(paramsNames)): \
-            print("{:33s} {:15.7f} {:15.7f}".format(paramsNames[idx], paramsSolnNonlin[idx][0], defaultParamValsOrigRow[0][idx] ) )
+        min_params = sensParamValsRow.flatten()
+        max_params = sensParamValsRowExt.flatten()
     else:
         print("\nTuned parameter values (paramsSolnNonlin)           Default value")
 
         min_params = np.min(PPE_params, axis=0)
         max_params = np.max(PPE_params, axis=0)
-        percentage_ranges = (paramsSolnNonlin.flatten() - min_params)/(max_params - min_params)
-        for idx in range(0,len(paramsNames)): \
-            print("{:33s} {:15.7f} [{:6.2%}] {:15.7f}".format(paramsNames[idx], paramsSolnNonlin[idx][0], percentage_ranges[idx], defaultParamValsOrigRow[0][idx] ) )
+    percentage_ranges = (paramsSolnNonlin.flatten() - min_params)/(max_params - min_params)
+    for idx in range(0,len(paramsNames)): \
+        print("{:33s} {:15.7f} [{:6.2%}] {:15.7f}".format(paramsNames[idx], paramsSolnNonlin[idx][0], percentage_ranges[idx], defaultParamValsOrigRow[0][idx] ) )
 
     # Check whether the minimizer actually reduces chisqd
     # Initial value of chisqd, which assumes parameter perturbations are zero

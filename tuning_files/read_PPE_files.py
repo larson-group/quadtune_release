@@ -108,6 +108,7 @@ def process_PPE_params_file(params_dataset, paramsNamesAndScales: np.ndarray, al
 
     paramsIndices = np.where(np.isin(allparamsNamesInFile, paramsNames))[0]
 
+    # paramsIndices = np.array([np.where(paramsNames == name)[0][0] for name in allparamsNamesInFile])
 
 
     defaultParamValsOrigRow = params_dataset.where(params_dataset.ens_idx.str.match('ctrl'), drop= True).params.values[0,paramsIndices]
@@ -257,29 +258,44 @@ def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics:np.ndarra
         right_sides[:,metric_Idx] = (metrics_values - metric_default) / np.abs((normMetricValsCol[metric_Idx]))
 
 
+    doRegularize = True
+    doNormalize = True
+
+    if doNormalize:
+        sigma = np.std(lin_system,axis=0)
+        sigma[sigma==0] = 1.0
+        lin_system = lin_system/sigma
 
 
-    ridge_solver = Ridge(alpha=0, fit_intercept=False)
+    if doRegularize:
+        alpha = 1e-4
+
+
+    else:
+        alpha=0
+        
+
+    ridge_solver = Ridge(alpha=alpha, fit_intercept=False)
 
 
 
     # scaler = StandardScaler(with_mean=False)
     # lin_system = scaler.fit_transform(lin_system)
 
-    sigma = np.std(lin_system,axis=0)
-    sigma[sigma==0] = 1.0
+    
 
-    # lin_system = lin_system/sigma
+    # 
 
     print(f"CONDITION: {np.linalg.cond(lin_system.T@lin_system)}")
-    print(f"CONDITION(regularised): {np.linalg.cond(lin_system.T@lin_system + 1e-4*np.eye((lin_system.T@lin_system).shape[0]))}")
+    print(f"CONDITION(Ridge): {np.linalg.cond(lin_system.T@lin_system + 1e-4*np.eye((lin_system.T@lin_system).shape[0]))}")
     ridge_solver.fit(lin_system, right_sides)
 
     # print(ridge_solver.alpha_)
 
-
-    derivatives = ridge_solver.coef_.T
-    # derivatives = (derivatives/sigma).T
+    if doNormalize:
+        derivatives = (ridge_solver.coef_/sigma).T
+    else:
+         derivatives = ridge_solver.coef_.T
     # derivatives = ridge_solver.coef_.T / scaler.scale_[:, np.newaxis]
 
     if doRegularizeByRegError:

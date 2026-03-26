@@ -347,11 +347,13 @@ if __name__ == '__main__':
 
 
     for idx, data in enumerate(vals_basic.T):
-        panels.append(createMapPanel(data,plotWidth,f"SST Data for PPE Member {idx}, Ratio: {ratios[idx]}",boxSize,colorScale='RDBu_r',minField=minFieldBias,maxField=maxFieldBias))
+        rmse = np.sqrt(np.sum(weights*data**2))
+        panels.append(createMapPanel(data,plotWidth,f"SST Data for PPE Member {idx}, Ratio: {ratios[idx]}, RMSE:{rmse}",boxSize,colorScale='RDBu_r',minField=minFieldBias,maxField=maxFieldBias))
 
     print("1/2 done")
     for idx, data in enumerate(vals_sst4k.T):
-        panelssst4k.append(createMapPanel(data,plotWidth,f"SST4k Data for PPE Member {idx}",boxSize,colorScale='RDBu_r',minField=minFieldBias,maxField=maxFieldBias))
+        rmse = np.sqrt(np.sum(weights*data**2))
+        panelssst4k.append(createMapPanel(data,plotWidth,f"SST4k Data for PPE Member {idx}, RMSE: {rmse}",boxSize,colorScale='RDBu_r',minField=minFieldBias,maxField=maxFieldBias))
     print('done, starting server')
     app = Dash(__name__)
 
@@ -386,4 +388,4 @@ if __name__ == '__main__':
     ])
 
     
-    app.run(debug=True,port=8080, use_reloader=False)
+    app.run(debug=True,port=8090, use_reloader=False)
