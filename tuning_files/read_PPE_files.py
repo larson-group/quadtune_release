@@ -47,7 +47,7 @@ def restrict_dataset_by_metric_loss(params_dataset,metrics_dataset,varPrefixes,b
     return restricted_paramsDataset, restricted_metricsDataset
 
 
-def restrict_dataset_by_param(params_dataset, metrics_dataset, metric_names, param_index, lower_bound = None, upper_bound = None, min_loss=None):
+def restrict_dataset_by_param(params_dataset, metrics_dataset, metric_names, param_index, lower_bound = None, upper_bound = None, min_loss=None, param_loss=False):
 
 
     if lower_bound is None:
@@ -71,12 +71,40 @@ def restrict_dataset_by_param(params_dataset, metrics_dataset, metric_names, par
 
     #if ctrl is outside of the bounds, set the PPE member with the lowest metric loss to ctrl
     if ctrl_params[param_index] <= lower_bound or ctrl_params[param_index] >= upper_bound:
+        
         if not min_loss:
-            print("Ctrl is outside of the bounds, setting the PPE member with the lowest metric loss to ctrl")
-            metric_data = restricted_metricsDataset[metric_names].isel(time=0,product=0).to_array().values
-            losses = np.sum((ctrl_metrics - metric_data)**2, axis=0)
+            if "new_ctrl" in restricted_metricsDataset.coords["ens_idx"]:
+                print("Ctrl is outside of the bounds, but a new_ctrl is already in the dataset, setting new_ctrl to ctrl")
+                temp_ens_idx = restricted_metricsDataset['ens_idx'].values.copy()
 
-            min_loss = np.argmin(losses)
+                min_loss = np.where(temp_ens_idx == "new_ctrl")[0][0]
+
+
+            elif not param_loss:
+                print("Ctrl is outside of the bounds, setting the PPE member with the lowest metric loss to ctrl")
+                metric_data = restricted_metricsDataset[metric_names].isel(time=0,product=0).to_array().values
+                losses = np.sum((ctrl_metrics - metric_data)**2, axis=0)
+
+                min_loss = np.argmin(losses)
+            else:
+                print("Ctrl is outside of the bounds, setting the PPE member with the lowest parameter loss to ctrl")
+                param_data = restricted_paramsDataset.params.values
+                mask = np.ones(param_data.shape[1], dtype=bool)
+                mask[param_index] = False
+                param_data = param_data[:,mask]
+                ctrl_params_masked = ctrl_params[mask]
+                min_param = np.min(param_data, axis=0)
+                max_param = np.max(param_data, axis=0)
+
+                normlzd_params = (param_data - min_param)/(max_param - min_param)
+                normlzd_default_param = (ctrl_params_masked - min_param)/(max_param - min_param)
+
+                
+
+                losses = np.sum((normlzd_default_param - normlzd_params)**2, axis=0)
+                min_loss = np.argmin(losses)
+
+                
 
         temp_ens_idx = restricted_metricsDataset['ens_idx'].values.copy()
 
@@ -258,8 +286,8 @@ def construct_sensitivity_curvature_matrices_from_PPE_data(PPE_metrics:np.ndarra
         right_sides[:,metric_Idx] = (metrics_values - metric_default) / np.abs((normMetricValsCol[metric_Idx]))
 
 
-    doRegularize = True
-    doNormalize = True
+    doRegularize = False
+    doNormalize = False
 
     if doNormalize:
         sigma = np.std(lin_system,axis=0)
