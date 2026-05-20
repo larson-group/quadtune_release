@@ -4,14 +4,39 @@ import numpy as np
 from scipy.optimize import basinhopping
 
 
-
 """
 All functions needed for the optimization of the different ratios
 """
 
-def maximize_ratio(numerator_SensMatrix, numerator_CurvMatrix, denominator_SensMatrix, denominator_CurvMatrix, bounds, eps=1e-4, starting_pos = None, seed = 26052026, use_grad=True, reg_gamma = 0):
+def maximize_ratio(numerator_SensMatrix, numerator_CurvMatrix, denominator_SensMatrix, denominator_CurvMatrix, bounds, eps=1e-4, starting_pos = None, seed = None, use_grad=True, reg_gamma = 0):
+    """
+    Maximizes the ratio of two Quadtune models using the Basin-Hopping algorithm.
 
+    Parameters
+    ----------
+    numerator_SensMatrix, numerator_CurvMatrix : numpy.ndarray
+        2D matrices defining the sensitivity and curvature of the target field to maximize.
+    denominator_SensMatrix, denominator_CurvMatrix : numpy.ndarray
+        2D matrices defining the sensitivity and curvature of the constraint field.
+    bounds : sequence of tuples
+        (min, max) bounds for the parameter space.
+    eps : float, optional
+        Numerical stability constant (default is 1e-4).
+    starting_pos : numpy.ndarray, optional
+        Initial guess for the parameter vector (default is zeros).
+    seed : int, optional
+        Random seed (default is None).
+    use_grad : bool, optional
+        If True, uses the analytical gradient function via SLSQP (default is True).
+    reg_gamma : float, optional
+        L2 regularization factor (default is 0).
 
+    Returns
+    -------
+    tuple
+        - x (numpy.ndarray): The optimized parameter vector.
+        - fun (float): The maximized ratio value.
+    """
 
     if starting_pos is None:
         starting_pos = np.zeros(numerator_SensMatrix.shape[1])
@@ -32,6 +57,26 @@ def maximize_ratio(numerator_SensMatrix, numerator_CurvMatrix, denominator_SensM
 
 
 def evaluate_grad(dp, numerator_SensMatrix, numerator_CurvMatrix, denominator_SensMatrix, denominator_CurvMatrix, eps=0.):
+    """
+    Computes the analytical gradient of the variance ratio with respect to the parameter vector.
+
+    Parameters
+    ----------
+    dp : numpy.ndarray
+        1D parameter vector.
+    numerator_SensMatrix, numerator_CurvMatrix : numpy.ndarray
+        2D arrays for the numerator model.
+    denominator_SensMatrix, denominator_CurvMatrix : numpy.ndarray
+        2D arrays for the denominator model.
+    eps : float, optional
+        Numerical stability constant (default is 0.0).
+
+    Returns
+    -------
+    numpy.ndarray
+        1D gradient vector.
+    """
+
     v_num = evaluate_model(dp, numerator_SensMatrix, numerator_CurvMatrix)
     v_den = evaluate_model(dp, denominator_SensMatrix, denominator_CurvMatrix)
     
@@ -46,21 +91,95 @@ def evaluate_grad(dp, numerator_SensMatrix, numerator_CurvMatrix, denominator_Se
 
 
 def evaluate_ratio(dp, numerator_SensMatrix, numerator_CurvMatrix, denominator_SensMatrix, denominator_CurvMatrix, eps =0.,reg_gamma = 0 ):
+    """
+    Computes the variance ratio of two Quadtune models.
+
+    Parameters
+    ----------
+    dp : numpy.ndarray
+        1D parameter vector.
+    numerator_SensMatrix, numerator_CurvMatrix : numpy.ndarray
+        2D arrays for the numerator model.
+    denominator_SensMatrix, denominator_CurvMatrix : numpy.ndarray
+        2D arrays for the denominator model.
+    eps : float, optional
+        Numerical stability constant (default is 0.0).
+    reg_gamma : float, optional
+        L2 regularization weight (default is 0.0).
+
+    Returns
+    -------
+    float
+        The calculated ratio.
+    """
     numerator = np.sum(evaluate_model(dp, numerator_SensMatrix, numerator_CurvMatrix) ** 2)
     denominator = np.sum((evaluate_model(dp, denominator_SensMatrix, denominator_CurvMatrix)) ** 2) + reg_gamma * np.sum(dp**2)
     return numerator/(denominator+ eps)
 
 def evaluate_model(dp, SensMatrix, CurvMatrix):
+    """
+    Evaluates a Quadtune model at a specific dp.
+
+    Parameters
+    ----------
+    dp : numpy.ndarray
+        1D array of length N representing parameter perturbations.
+    SensMatrix : numpy.ndarray
+        2D array of shape (M, N) representing the Jacobian matrix.
+    CurvMatrix : numpy.ndarray
+        2D array of shape (M, N) representing the diagonal of the Hessian matrix.
+
+    Returns
+    -------
+    numpy.ndarray
+        1D array of length M representing the evaluated model output.
+    """
     return SensMatrix @ dp + 0.5 * CurvMatrix @ dp**2
 
-def calculate_ratio_from_normalized_data(numerator_data, denominator_data, eps = 1e-4):
-    numerator = np.sum(numerator_data ** 2)
-    denominator = np.sum(denominator_data ** 2) + eps
-    return numerator/denominator
+# def calculate_ratio_from_normalized_data(numerator_data, denominator_data, eps = 1e-4):
+#     numerator = np.sum(numerator_data ** 2)
+#     denominator = np.sum(denominator_data ** 2) + eps
+#     return numerator/denominator
 
 def optimize_all(base_var_name, PD_base_SensMatrix, PD_base_CurvMatrix, F_base_SensMatrix, F_base_CurvMatrix,constr_var_name, 
                  PD_constr_SensMatrix, PD_constr_CurvMatrix, F_constr_SensMatrix, F_constr_CurvMatrix, normlzd_param_bounds, combined_future = False, eps = 1e-4, use_grad = True, reg_gamma = 0, seed=None):
 
+    """
+    Run optimizations for the four different scenario with a base field and a constraining field (e.g., F_S, F_SL, max L_S, min L_S) 
+    Parameters
+    ----------
+    base_var_name : str
+        Identifier for the primary target field.
+    PD_base_SensMatrix, PD_base_CurvMatrix : numpy.ndarray
+        Baseline sensitivity (Jacobian) and curvature (Hessian) matrices for the primary field.
+    F_base_SensMatrix, F_base_CurvMatrix : numpy.ndarray
+        Future sensitivity and curvature matrices for the primary field.
+    constr_var_name : str
+        Identifier for the secondary constraint field.
+    PD_constr_SensMatrix, PD_constr_CurvMatrix : numpy.ndarray
+        Baseline sensitivity and curvature matrices for the constraint field.
+    F_constr_SensMatrix, F_constr_CurvMatrix : numpy.ndarray
+        Future sensitivity and curvature matrices for the constraint field.
+    normlzd_param_bounds : sequence of tuples
+        Optimization bounds for each normalized parameter in the target space.
+    combined_future : bool, optional
+        If True, stacks the projected base and constraint matrices into a joint target (default is False).
+    eps : float, optional
+        Numerical stability constant (default is 1e-4).
+    use_grad : bool, optional
+        If True, utilizes analytical gradients for the optimization (default is True).
+    reg_gamma : float, optional
+        L2 regularization penalty weight applied to the objective function (default is 0).
+    seed : int, optional
+        Random seed for the stochastic global optimizer.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping specific optimization scenarios to tuples containing the optimal parameter 
+        vector and the maximized objective value.
+    """
+        
     if combined_future:
         Future_SensMatrix = np.vstack((F_base_SensMatrix,F_constr_SensMatrix))
         Future_CurvMatrix = np.vstack((F_base_CurvMatrix,F_constr_CurvMatrix))
@@ -111,7 +230,8 @@ def optimize_all(base_var_name, PD_base_SensMatrix, PD_base_CurvMatrix, F_base_S
         bounds=normlzd_param_bounds,
         eps = eps,
         use_grad=use_grad,
-        reg_gamma = reg_gamma
+        reg_gamma = reg_gamma,
+        seed=seed
         )
 
     # optimize for constraint over base
@@ -124,7 +244,8 @@ def optimize_all(base_var_name, PD_base_SensMatrix, PD_base_CurvMatrix, F_base_S
     bounds=normlzd_param_bounds,
     eps = eps,
     use_grad=use_grad,
-    reg_gamma = reg_gamma
+    reg_gamma = reg_gamma,
+    seed=seed
     )
 
 
@@ -138,7 +259,8 @@ def optimize_all(base_var_name, PD_base_SensMatrix, PD_base_CurvMatrix, F_base_S
     bounds=normlzd_param_bounds,
     eps = eps,
     use_grad=use_grad,
-    reg_gamma = reg_gamma
+    reg_gamma = reg_gamma,
+    seed=seed
     )  
 
 
@@ -148,6 +270,23 @@ def optimize_all(base_var_name, PD_base_SensMatrix, PD_base_CurvMatrix, F_base_S
 
 
 def normalize_metrics_data(metrics_data, default_data, global_averages):
+    """
+    Standardizes output metrics by their respective global observed average and default result.
+
+    Parameters
+    ----------
+    metrics_data : numpy.ndarray
+        1D array of flattened spatial data.
+    default_data : numpy.ndarray
+        1D array of flattened default data.
+    global_averages : numpy.ndarray
+        1D array of reference averages used as weighting factors.
+
+    Returns
+    -------
+    numpy.ndarray
+        Weighted, dimensionless differences from the baseline.
+    """
     length = metrics_data.shape[0] // len(global_averages)
     
     weights = np.repeat(np.abs(global_averages), length)
@@ -155,7 +294,23 @@ def normalize_metrics_data(metrics_data, default_data, global_averages):
     return (metrics_data - default_data) / weights
 
 def denormalize_metrics_data(normalized_data, default_data, global_averages):
+    """
+    Reverts standardized data back to its original physical units.
 
+    Parameters
+    ----------
+    normalized_data : numpy.ndarray
+        1D array of normalized data.
+    default_data : numpy.ndarray
+        1D array of default data in physical units.
+    global_averages : numpy.ndarray
+        1D array of reference averages used as weights.
+
+    Returns
+    -------
+    numpy.ndarray
+        Data projected back into absolute units.
+    """
     weights = np.ones_like(normalized_data)
 
     length = normalized_data.shape[0]//len(global_averages)
@@ -167,11 +322,49 @@ def denormalize_metrics_data(normalized_data, default_data, global_averages):
 
 
 def get_H_at_dp(SensMatrix, CurvMatrix, dp):
+    """
+    Computes the approximated Hessian matrix
+    at a specific evaluation dp.
+
+    Parameters
+    ----------
+    SensMatrix : numpy.ndarray
+        Sensitivity matrix (M, N).
+    CurvMatrix : numpy.ndarray
+        Curvature matrix (M, N).
+    dp : numpy.ndarray
+        Evaulation dp (N,).
+
+    Returns
+    -------
+    numpy.ndarray
+        2D array of shape (N, N) representing the localized Hessian approximation.
+    """
+
     J = SensMatrix + CurvMatrix * dp
     return J.T@J
 
 
 def calc_A_opt_metrics(H_base, H_constr):
+    """
+    Calculates A-optimality metrics to quantify the restriction 
+    imposed by secondary constraints.
+
+    Parameters
+    ----------
+    H_base : numpy.ndarray
+        Hessian matrix of the unconstrained base system (N, N).
+    H_constr : numpy.ndarray
+        Hessian matrix of the constrained system (N, N).
+
+    Returns
+    -------
+    tuple
+        - R_scale (float): Volumetric scaling ratio based on matrix determinants.
+        - E_RLS (float): Expected ratio (A-optimality).
+        - R_shape (float):Shape alignment between base and constrained nullspaces.
+        - A_opt_over_n_slope (float): Normalized slope of the A-optimality metric.
+    """
     H_base_inv = np.linalg.pinv(H_base)
 
 
@@ -183,35 +376,66 @@ def calc_A_opt_metrics(H_base, H_constr):
 
     A_opt_over_n_slope = 1 /(1+ E_RLS)
 
-    R_ortho = E_RLS / (R_scale)
+    R_shape = E_RLS / (R_scale)
 
-    return R_scale, E_RLS, R_ortho, A_opt_over_n_slope
+    return R_scale, E_RLS, R_shape, A_opt_over_n_slope
 
-def calc_D_opt_metrics(H_base, H_constr):
-
-
-    H_base_inv = np.linalg.pinv(H_base)
-
-    F_scale = np.linalg.det(H_base_inv@H_constr)**(1/H_base.shape[0])
-
-    D_optimality = np.linalg.det(H_base + H_constr)/ np.linalg.det(H_base)
-
-    D_opt_root = D_optimality ** (1/H_base.shape[0])
-
-    F_ortho = D_opt_root/ (1 + F_scale)
-
-
-    return D_opt_root, F_ortho
 
 
 def calc_E_RR(H_base, H_constr):
+    """
+    Calculates the expected ratio (E_RR) using the trace of the 
+    Hessian matrices.
+
+    Parameters
+    ----------
+    H_base : numpy.ndarray
+        Hessian matrix of the unconstrained base system (N, N).
+    H_constr : numpy.ndarray
+        Hessian matrix of the constrained system (N, N).
+
+    Returns
+    -------
+    float
+        The expected average ratio.
+    """
     trace = np.linalg.trace(  np.linalg.pinv( np.eye(H_base.shape[0]) +  np.linalg.pinv(H_base)  @  H_constr)     )
 
     return trace / H_base.shape[0]
 
 
 def normalize_params(params, default_params):
+    """
+    Converts absolute parameter values into perturbations relative to the default.
+
+    Parameters
+    ----------
+    params : numpy.ndarray
+        Array of absolute parameters.
+    default_params : numpy.ndarray
+        Array of default parameters.
+
+    Returns
+    -------
+    numpy.ndarray
+        Normalized parameter perturbations.
+    """
     return (params - default_params) / np.abs(default_params)
 
 def denormalize_params(normlzd_params, default_params):
+    """
+    Converts parameter perturbations back into absolute values.
+
+    Parameters
+    ----------
+    normlzd_params : numpy.ndarray
+        Normalized parameter perturbations.
+    default_params : numpy.ndarray
+        Array of default parameters.
+
+    Returns
+    -------
+    numpy.ndarray
+        Absolute parameter values.
+    """
     return normlzd_params * np.abs(default_params) + default_params
