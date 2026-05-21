@@ -1759,7 +1759,7 @@ def createMapPanel(fieldToPlotCol,
     #regionalMapPanel.update_layout(width=700, height=450)
     #regionalMapPanel.update_layout(title=plotTitle, title_y=0.9, title_x=0.5)
     regionalMapPanel.update_layout(title=plotTitle + RsqdString,
-                                   title_y=0.9, title_yanchor='bottom',
+                                   title_y=0.95, title_yanchor='bottom',
                                    title_x=0.45, title_xanchor='center')
     regionalMapPanel.add_annotation(
         xref="paper", yref="paper",
@@ -4022,6 +4022,7 @@ def createLossFncVsParamPanels(
             yaxis_title = "Loss Function Value",
             legend = dict(x = 0.02, y = 0.98)
         )
+        fig.update_yaxes(tickformat=".3e")
 
         plots.append(fig)
 
