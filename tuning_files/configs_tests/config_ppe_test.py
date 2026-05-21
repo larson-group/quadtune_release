@@ -72,6 +72,15 @@ def config_core():
     # the range spanned by the default and sensitivity runs.
     doSensParamBounds = False
 
+    #Flag for whether the PPE members contributing most to the error of the quasi-linear regression should be excluded
+    doRegularizeByRegError = False
+
+    #Flag for whether PPE members with the largest errors (default_metrics-PPE_metrics) should be excluded
+    doRegularizeByMetricError = False
+
+    #Flag for whether to regularize by restricitng a parameter to be above or below a specific value
+    doRegularizeByRestrictingParamVals = False
+
 
     '''
     Configure the resolution of the Data and which metrics and parameters to use
@@ -158,6 +167,8 @@ def config_core():
          debug_level, recovery_test_dparam,
          doSensParamBounds,
          doWeightRegions, weightedRegionsDict,
+         doRegularizeByRegError,
+         doRegularizeByMetricError, doRegularizeByRestrictingParamVals,
          beVerbose)
 
 
