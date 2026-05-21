@@ -10,7 +10,7 @@ plotly~=6.0.1
 
 # Newer kaleido version is not working under windows for exporting plotly plots to disk
 kaleido==0.1.0.post1; sys_platform == 'win32'
-kaleido>=0.2.1; sys_platform != 'win32'
+kaleido==0.2.1; sys_platform != 'win32'
 
 matplotlib~=3.10.1
 
