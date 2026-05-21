@@ -19,6 +19,9 @@ optimize parameter values, and display diagnostic plots
 on a dashboard created with plotly dash.
 See `tuning_files/README_tuning.md` for a user guide for tuning.
 
+The `tuning_files` directory also contains a `max_ratio` subfolder with files for determining the effectiveness of additional constraints.
+See `tuning_files/max_ratio/README.md` for additional information.
+
 The scripts in `tests` are pytest tests which test the functionality of quadtune (https://docs.pytest.org).  
 (You may need to initialize git lfs for your user account:  `git lfs install`.)  
 Then to run all tests, go to the `quadtune` directory and execute the command `pytest`.  
