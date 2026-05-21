@@ -8,8 +8,8 @@ from pathlib import Path
 from optimization import normalize_metrics_data
 
 
-
-
+import sys
+engine = "h5netcdf" if sys.platform == "win32" else "netcdf4"
 
 def get_metrics_names(varPrefixes, boxSize):
     """
@@ -92,7 +92,7 @@ def get_params_from_files(files, params_names):
     params = []
 
     for file in files:
-        dataset = xr.open_dataset(file,engine="netcdf4")
+        dataset = xr.open_dataset(file,engine="engine")
         param_values = dataset[params_names].to_array().values
         params.append(param_values.flatten())
 
@@ -143,7 +143,7 @@ def calc_metric_sum_delta_from_file(file, default_data, global_averages, metric_
     numpy.ndarray
         1D array of the summed squared deviations. The number of metrics gets derived from the length of 'global_averages'.
     """
-    dataset = xr.open_dataset(file, engine='netcdf4')
+    dataset = xr.open_dataset(file, engine='engine')
 
     metrics_data = dataset[metric_names].to_array().values.flatten()
 
@@ -193,8 +193,8 @@ def get_correct_model_runs_delta(denormalized_params, all_verified_params, files
 
     metric_names = get_metrics_names(varNames, box_size)
 
-    default_dataset = xr.open_dataset(default_file, engine="netcdf4")[metric_names].to_array().values.flatten()
-    default_dataset_sst4k = xr.open_dataset(sst4k_default_file, engine="netcdf4")[metric_names].to_array().values.flatten()
+    default_dataset = xr.open_dataset(default_file, engine="engine")[metric_names].to_array().values.flatten()
+    default_dataset_sst4k = xr.open_dataset(sst4k_default_file, engine="engine")[metric_names].to_array().values.flatten()
 
     
     E3SM_metric_deltas_sst4k = np.array([calc_metric_sum_delta_from_file(file[0],default_dataset_sst4k,global_averages, metric_names) for file in sst4k_files[idxs]])
