@@ -9,6 +9,7 @@ from data_io import (
     calc_metric_sum_delta_from_file,
     get_correct_model_runs_delta,
     extract_field_matrices_from_whole,
+    flatten_results,
 )
 
 from plotting import (
@@ -155,10 +156,12 @@ COLORS = ["red", "blue", "green"]
 NUM_PARAMS_TO_MAP_PLOT = 2
 
 
-def main(args):
+def main(argv = None):
     """
     Check if everything is correctly defined
     """
+    args = parse_arguments(argv)
+
     if (args.ppe_data is None) != (args.ppe_data_sst4k is None):
         print("Provide either no path to a PPE or for both SST and SST4K!")
         return
@@ -334,6 +337,10 @@ def main(args):
             run_exact_constraint=CONSTR_OPT,
             exact_constr_value=CONSTR_VALUE,
         )
+    if args.testing:
+        flattened_results_dict = flatten_results(all_optimizations)
+        return flattened_results_dict
+    
 
     """
     Create cartoon scatter
@@ -483,9 +490,8 @@ def main(args):
             dpi=300,
         )
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+def parse_arguments(argv=None):
+    parser = argparse.ArgumentParser(argv)
 
     parser.add_argument(
         "-d",
@@ -554,5 +560,16 @@ if __name__ == "__main__":
         help="Value used to constrain the present-day base field result",
     )
 
-    args = parser.parse_args()
-    main(args)
+    parser.add_argument(
+        "--testing",
+        action="store_true",
+        default=False,
+        required=False,
+        help="Only run the optimizations and return the results for automatic testing"
+    )
+
+    args = parser.parse_args(argv)
+    return args
+
+if __name__ == "__main__":
+    main()

@@ -152,11 +152,30 @@ def calc_metric_sum_delta_from_file(file, default_data, global_averages, metric_
 
     return results
 
+def flatten_results(nested_dict):
+    """
+    Flatten the result dict for automated testing
+
+    Parameters
+    ----------
+    nested_dict: dict
+        nested dictionary containing the results of the different optimizations
+    """
+    flat_dict = {}
+    for var_name, scenarios in nested_dict.items():
+        for scenario_name, (vector, scalar) in scenarios.items():
+            base_key = f"{var_name}/{scenario_name}"
+            
+            flat_dict[f"{base_key}/vector"] = vector
+            flat_dict[f"{base_key}/scalar"] = np.array(scalar) 
+            
+    return flat_dict
+
 
 def get_correct_model_runs_delta(denormalized_params, all_verified_params, files, sst4k_files, default_file, sst4k_default_file, varNames, global_averages, box_size) :
     """
     Identifies specific parameter configurations within a larger dataset and extracts 
-    their corresponding squared normalized deviations from a default .
+    their corresponding squared normalized deviations from a default.
 
     Parameters
     ----------
