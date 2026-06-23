@@ -1,7 +1,6 @@
 # QuadTune
 A tuner for global atmospheric models with a quadratic emulator.
 
-
 This repo contains python source code in three folders: 
 1) `create_regional_files`,
 2) `tuning_files` and
