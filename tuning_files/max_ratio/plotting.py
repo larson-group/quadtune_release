@@ -18,7 +18,7 @@ project_root = Path(__file__).resolve().parents[1]
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from optimization import (evaluate_model, get_H_at_dp, evaluate_ratio, calc_A_opt_metrics, calc_E_RR)
+from optimization import (calc_all_A_opt_metrics, evaluate_model, get_H_at_dp, evaluate_ratio, calc_A_opt_metrics, calc_E_RR)
 
 
 
@@ -530,9 +530,15 @@ def create_shape_vs_scale_plot(all_optimizations, base_field, used_fields, all_f
     fields_to_plot = used_fields.copy()
     fields_to_plot.remove(base_field)
 
+    BaseSensMatrix, BaseCurvMatrix = all_fields_data[base_field][:2]
+
     if colors is None:
         colors = sns.color_palette("tab10", n_colors=len(fields_to_plot))
 
+
+    R_scales, _, R_shapes, _ = calc_all_A_opt_metrics(all_optimizations, used_fields, base_field, all_fields_data, paramset_idx_to_plot)
+
+    labels = []
     for idx, field in enumerate(fields_to_plot):
         
 
@@ -541,22 +547,11 @@ def create_shape_vs_scale_plot(all_optimizations, base_field, used_fields, all_f
 
         scatter_point_name = latexify_parameterset_name(constrained_parameter_set_name.replace("res","R"))
 
-        BaseSensMatrix, BaseCurvMatrix = all_fields_data[base_field][:2]
-        ConstrSensMatrix, ConstrCurvMatrix = all_fields_data[field][:2]
-
-        H_B = get_H_at_dp(BaseSensMatrix, BaseCurvMatrix,constrained_parameter_set)
-
-
-
-
-
-        H_C = get_H_at_dp(ConstrSensMatrix, ConstrCurvMatrix, constrained_parameter_set)
-
-        R_scale, E_RLS, R_shape, _ = calc_A_opt_metrics(H_B,H_C)
+        labels.append(scatter_point_name)
         
 
 
-        sns.scatterplot(x=[R_scale], y=[R_shape], label = scatter_point_name, s=scatter_size,c = colors[idx], ax=ax)
+    sns.scatterplot(x=R_scales, y=R_shapes, hue = labels, s=scatter_size,palette = colors[:len(labels)], ax=ax)
 
     
 

@@ -1,6 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor
 
-from optimization import optimize_all, normalize_params, denormalize_params
+from optimization import calc_all_A_opt_metrics, calc_all_E_RR, optimize_all, normalize_params, denormalize_params
 
 from data_io import (
     get_metrics_names,
@@ -146,6 +146,9 @@ USED_PARAMETER_NAMES = ALL_PARAMS_NAMES
 
 # Index of parameter, for which a barplot should be created
 PARAM_IDX_TO_BARPLOT = 1
+
+# Index of parameterset to linearize about
+PARAM_IDX_TO_LINEARIZE = 2 
 
 # Fields that should be considered in the following computations
 USED_FIELDS = ALL_FIELDS
@@ -337,9 +340,16 @@ def main(argv = None):
             run_exact_constraint=CONSTR_OPT,
             exact_constr_value=CONSTR_VALUE,
         )
+    """
+    In a testing configuration where plots are not needed, the code can be stopped early to minimize the compute time.
+    """
     if args.testing:
         flattened_results_dict = flatten_results(all_optimizations)
-        return flattened_results_dict
+        R_scales, E_RLS, R_shapes, _ = calc_all_A_opt_metrics(all_optimizations,USED_FIELDS, BASE_FIELD, all_fields_data, PARAM_IDX_TO_LINEARIZE)
+
+        E_RR = calc_all_E_RR(all_optimizations,USED_FIELDS, BASE_FIELD, all_fields_data, PARAM_IDX_TO_LINEARIZE)
+
+        return flattened_results_dict , [R_scales, R_shapes, E_RR, E_RLS]
     
 
     """
@@ -358,7 +368,7 @@ def main(argv = None):
 
     print("Creating scale vs shape plot")
     scale_shape_ax = create_shape_vs_scale_plot(
-        all_optimizations, BASE_FIELD, USED_FIELDS, all_fields_data, colors=COLORS
+        all_optimizations, BASE_FIELD, USED_FIELDS, all_fields_data, colors=COLORS,paramset_idx_to_plot=PARAM_IDX_TO_LINEARIZE
     )
     scale_shape_fig = scale_shape_ax.get_figure()
     scale_shape_fig.savefig(

@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 import sys
 """
-The following line adds the parent directory (quadtune/) to the python path, so that imports from directory tuning_files work.
+The following line adds the directory (quadtune/tuning_files/max_ratio) to the python path, so that imports from the directory max_ratio work.
 The alternative would be to make quadtune a package using __init__.py files, but that would require changing
 all import statements in other files.
 """
@@ -14,24 +14,35 @@ from tuning_files.max_ratio import create_paper_plots
 
 def test_simulation_results():
 
-    result_path = Path(__file__).parent / "files_for_max_ratio_paper/reference_optimization_results.npz"
+    optimization_result_path = Path(__file__).parent / "files_for_max_ratio_paper/reference_optimization_results.npz"
+    metric_result_path = Path(__file__).parent / "files_for_max_ratio_paper/reference_metrics.npy"
 
     data_path = str(Path(__file__).parent.parent / "tuning_files/max_ratio/")
 
-    expected_flat = np.load(result_path)
+    expected_optimizations_flat = np.load(optimization_result_path)
+    expected_metrics = np.load(metric_result_path)
     
-    flattened_result =create_paper_plots.main(["-d",data_path+"/data","--ppe_data",data_path+"/PPE_data","--ppe_data_sst4k",data_path+"/PPE_data_sst4k","-o", data_path+"/output_dir", "--constr_opt", "--testing"]) 
+    "This command runs the configuration used for plots of the first submission of the max-ratio paper."
+    flattened_optimization_result, result_metrics  =create_paper_plots.main(["-d",data_path+"/data","--ppe_data",data_path+"/PPE_data","--ppe_data_sst4k",data_path+"/PPE_data_sst4k","-o", data_path+"/output_dir", "--constr_opt", "--testing"]) 
 
     
-    expected_keys = set(expected_flat.files)
-    actual_keys = set(flattened_result.keys())
+    expected_keys = set(expected_optimizations_flat.files)
+    actual_keys = set(flattened_optimization_result.keys())
     assert expected_keys == actual_keys, "The structure of the output dictionary has changed"
+
+    npt.assert_allclose(
+        result_metrics,
+        expected_metrics,
+        atol=1e-4,
+        rtol=1e-4,
+        err_msg="Metrics differ (Scales, Shapes, E_RR, E_RLS)"
+    )
     
 
     for key in expected_keys:
         npt.assert_allclose(
-            flattened_result[key], 
-            expected_flat[key], 
+            flattened_optimization_result[key], 
+            expected_optimizations_flat[key], 
             atol=1e-3,
             rtol=1e-3,
             err_msg=f"Different result for {key}"
