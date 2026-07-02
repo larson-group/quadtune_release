@@ -206,6 +206,9 @@ def main(args):
             sensNcFilenamesExt = None
             defaultNcFilename = None
 
+        normlzdOrdDBoundsMin = []
+        normlzdOrdDBoundsMax = []
+
     else:
 
         # The user should input all tuning configuration info into file set_up_inputs.py
