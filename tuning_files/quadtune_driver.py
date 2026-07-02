@@ -343,6 +343,9 @@ def main(args):
             normlzdUpperBoundsArray = upperBoundsArray * np.reciprocal(magParamValsRow)
             normlzdOrdDBoundsMin = normlzdLowerBoundsArray - defaultParamValsOrigRow * np.reciprocal(magParamValsRow)
             normlzdOrdDBoundsMax = normlzdUpperBoundsArray - defaultParamValsOrigRow * np.reciprocal(magParamValsRow)
+        else:
+            normlzdOrdDBoundsMin = []
+            normlzdOrdDBoundsMax = []
 
         # For prescribed parameters, construct numMetrics x numParams matrix of second derivatives, d2metrics/dparams2.
         # The derivatives are normalized by observed metric values and max param values.
