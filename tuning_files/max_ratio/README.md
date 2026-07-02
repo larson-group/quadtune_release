@@ -6,7 +6,7 @@ To run the analysis and create plots run the following steps:
 
 0) Create an empty virtual environment via `conda` or `venv`
 1) Navigate to the main Quadtune directory (one directory up) and run `pip install -r requirements.txt`
-2) Return to the directory, where this README resides, and run `python create_paper_plots.py -d ./data --ppe_data ./PPE_data --ppe_data_sst4k ./PPE_data_sst4k -o ./output_dir  --constr_opt`
+2) Return to the directory, where this README resides, and run `python create_max_ratio_paper_plots.py -d ./data --ppe_data ./PPE_data --ppe_data_sst4k ./PPE_data_sst4k -o ./output_dir  --constr_opt`
 
 The code is split into 4 main files:
 1) `create_paper_plots.py`: Contains the configuration and main function to execute the optimizations and plotting routines.

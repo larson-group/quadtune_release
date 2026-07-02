@@ -10,34 +10,25 @@ The alternative would be to make quadtune a package using __init__.py files, but
 all import statements in other files.
 """
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../tuning_files/max_ratio')))
-from tuning_files.max_ratio import create_paper_plots
+from tuning_files.max_ratio import create_max_ratio_paper_plots
 
 def test_simulation_results():
 
-    optimization_result_path = Path(__file__).parent / "files_for_max_ratio_paper/reference_optimization_results.npz"
-    metric_result_path = Path(__file__).parent / "files_for_max_ratio_paper/reference_metrics.npy"
+    optimization_result_path = Path(__file__).parent / "files_for_max_ratio_paper"/"reference_max_ratio_results.npz"
 
     data_path = str(Path(__file__).parent.parent / "tuning_files/max_ratio/")
 
     expected_optimizations_flat = np.load(optimization_result_path)
-    expected_metrics = np.load(metric_result_path)
-    
-    "This command runs the configuration used for plots of the first submission of the max-ratio paper."
-    flattened_optimization_result, result_metrics  =create_paper_plots.main(["-d",data_path+"/data","--ppe_data",data_path+"/PPE_data","--ppe_data_sst4k",data_path+"/PPE_data_sst4k","-o", data_path+"/output_dir", "--constr_opt", "--testing"]) 
 
     
+    "This command runs the configuration used for plots of the first submission of the max-ratio paper."
+    flattened_optimization_result  =create_max_ratio_paper_plots.main(["-d",data_path+"/data","--ppe_data",data_path+"/PPE_data","--ppe_data_sst4k",data_path+"/PPE_data_sst4k","-o", data_path+"/output_dir", "--constr_opt", "--testing"]) 
+
+
+
     expected_keys = set(expected_optimizations_flat.files)
     actual_keys = set(flattened_optimization_result.keys())
     assert expected_keys == actual_keys, "The structure of the output dictionary has changed"
-
-    npt.assert_allclose(
-        result_metrics,
-        expected_metrics,
-        atol=1e-4,
-        rtol=1e-4,
-        err_msg="Metrics differ (Scales, Shapes, E_RR, E_RLS)"
-    )
-    
 
     for key in expected_keys:
         npt.assert_allclose(

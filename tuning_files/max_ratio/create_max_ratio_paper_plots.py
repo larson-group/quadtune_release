@@ -1,3 +1,10 @@
+"""
+Create all plots used in the first submission of the Nobre-Wittwer et. al. 2026 paper "Effectiveness of observable constraints on the worst-case uncertainty of a global atmospheric model".
+https://essopenarchive.org/doi/full/10.22541/essoar.15004390/v1
+Runs multiple constrained optimizations and additional diagnostics (e.g. the expected average ratio of ratios).
+"""
+
+
 from concurrent.futures import ProcessPoolExecutor
 
 from optimization import calc_all_A_opt_metrics, calc_all_E_RR, optimize_all, normalize_params, denormalize_params
@@ -148,6 +155,7 @@ USED_PARAMETER_NAMES = ALL_PARAMS_NAMES
 PARAM_IDX_TO_BARPLOT = 1
 
 # Index of parameterset to linearize about
+# e.g. for LWCF: 0 -> R_F_S, 1-> R_F_SL, 2-> R_LS
 PARAM_IDX_TO_LINEARIZE = 2 
 
 # Fields that should be considered in the following computations
@@ -346,10 +354,17 @@ def main(argv = None):
     if args.testing:
         flattened_results_dict = flatten_results(all_optimizations)
         R_scales, E_RLS, R_shapes, _ = calc_all_A_opt_metrics(all_optimizations,USED_FIELDS, BASE_FIELD, all_fields_data, PARAM_IDX_TO_LINEARIZE)
+        flattened_results_dict["R_scales"] = np.array(R_scales)
+        flattened_results_dict["E_RLS"] = np.array(E_RLS)
+        flattened_results_dict["R_shapes"] = np.array(R_shapes)
 
+        #E_RR is defined as an expected ratio of variance ratios as described in Nobre-Wittwer et al. (2026)
         E_RR = calc_all_E_RR(all_optimizations,USED_FIELDS, BASE_FIELD, all_fields_data, PARAM_IDX_TO_LINEARIZE)
 
-        return flattened_results_dict , [R_scales, R_shapes, E_RR, E_RLS]
+        flattened_results_dict["E_RR"] = np.array(E_RR)
+
+        # np.savez("reference_max_ratio_results.npz",**flattened_results_dict)
+        return flattened_results_dict
     
 
     """

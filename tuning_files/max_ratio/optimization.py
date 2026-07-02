@@ -613,9 +613,9 @@ def calc_all_A_opt_metrics(all_optimizations,used_fields, base_field, all_fields
     all_optimizations: dict
         Nested dictionary mapping field names to their optimization results.
     used_fields : list of str
-        Names of all fields being evaluated.
+        Names of all fields being evaluated (e.g. LWCF).
     base_field: str
-        Name of the base field.
+        Name of the base field (e.g. SWCF).
     all_fields_data : dict
         Dictionary mapping field names to their respective sensitivity and curvature matrices.
     paramset_idx: int
@@ -625,8 +625,8 @@ def calc_all_A_opt_metrics(all_optimizations,used_fields, base_field, all_fields
     -------
     tuple
         - Scales_metrics (list of floats): Volumetric scaling ratio based on matrix determinants.
-        - E_RLS (list of floats): Expected ratio (A-optimality).
-        - Shapes_metrics (list of floats):Shape alignment between base and constrained nullspaces.
+        - E_RLS (list of floats): Expected ratios (A-optimality), with one for each field used in optimization.
+        - Shapes_metrics (list of floats): Shape alignment between base and constrained nullspaces.
         - A_opt_over_n_slope (list of floats): Normalized slope of the A-optimality metric.
     """
     Scales_metrics = []
@@ -648,11 +648,11 @@ def calc_all_A_opt_metrics(all_optimizations,used_fields, base_field, all_fields
 
 
         ConstrSensMatrix, ConstrCurvMatrix = all_fields_data[field][:2]
-        H_B = get_H_at_dp(BaseSensMatrix, BaseCurvMatrix, constrained_parameter_set)
-        H_C = get_H_at_dp(ConstrSensMatrix, ConstrCurvMatrix, constrained_parameter_set)
+        H_Base = get_H_at_dp(BaseSensMatrix, BaseCurvMatrix, constrained_parameter_set)
+        H_Constr = get_H_at_dp(ConstrSensMatrix, ConstrCurvMatrix, constrained_parameter_set)
 
 
-        R_scale, E_RLS, R_shape, A_opt_over_n = calc_A_opt_metrics(H_B, H_C)
+        R_scale, E_RLS, R_shape, A_opt_over_n = calc_A_opt_metrics(H_Base, H_Constr)
         
 
         Scales_metrics.append(R_scale)
@@ -696,7 +696,7 @@ def calc_all_E_RR(all_optimizations, used_fields, base_field, all_fields_data, p
     all_optimizations: dict
         Nested dictionary mapping field names to their optimization results.
     used_fields : list of str
-        Names of all fields being evaluated.
+        Names of all fields being evaluated (e.g. LWCF).
     base_field: str
         Name of the base field.
     all_fields_data : dict
