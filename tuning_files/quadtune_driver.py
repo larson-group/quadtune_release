@@ -581,7 +581,7 @@ def main(args):
                          metricsWeights, normMetricValsCol, magParamValsRow,
                          defaultParamValsOrigRow,
                          normlzdOrdDparamsMin, normlzdOrdDparamsMax,
-                         normlzdOrdDBoundsMin, normlzdOrdDBoundsMin,
+                         normlzdOrdDBoundsMin, normlzdOrdDBoundsMax,
                          normlzdSensMatrixPolySvd, normlzdDefaultBiasesCol,
                          normlzdCurvMatrixSvd,
                          doPiecewise, normlzd_dpMid,
@@ -1721,7 +1721,7 @@ def check_recovery_of_param_vals(debug_level: int, recovery_test_dparam: np.ndar
     defaultBiasesApproxNonlinNoCurv, defaultBiasesApproxNonlin2xCurv = \
         solveUsingNonlin(metricsNames, metricsWeights, normMetricsValsCol, magparamValsRow, \
                         defaultParamValsOrigRow, normlzdOrdDparamsMin, normlzdOrdDparamsMax, \
-                             normlzdOrdDBoundsMin, normlzdOrdDBoundsMin, \
+                             normlzdOrdDBoundsMin, normlzdOrdDBoundsMax, \
                                  normlzdSensMatrixPoly, -normlzdDefaultBiasesApproxNonlin,\
                             normlzdCurvMatrix, doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix,\
                                 normlzdRightSensMatrix, normlzdInteractDerivs, interactIdxs, reglrCoef, penaltyCoef)
