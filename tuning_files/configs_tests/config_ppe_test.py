@@ -72,6 +72,10 @@ def config_core():
     # the range spanned by the default and sensitivity runs.
     doSensParamBounds = False
 
+    # Flag to set custom parameter ranges, but NOT
+    # currently configured for PPE, so should remain False here.
+    doCustomParamBounds = False
+
     #Flag for whether the PPE members contributing most to the error of the quasi-linear regression should be excluded
     doRegularizeByRegError = False
 
@@ -165,7 +169,7 @@ def config_core():
          reglrCoef, penaltyCoef, doBootstrapSampling,
          paramsNamesAndScales, allparamsNamesInFile,
          debug_level, recovery_test_dparam,
-         doSensParamBounds,
+         doSensParamBounds, doCustomParamBounds,
          doWeightRegions, weightedRegionsDict,
          doRegularizeByRegError,
          doRegularizeByMetricError, doRegularizeByRestrictingParamVals,

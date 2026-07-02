@@ -92,7 +92,7 @@ def main(args):
          reglrCoef, penaltyCoef, doBootstrapSampling,
          paramsNamesAndScales, allparamsNamesInFile,
          debug_level, recovery_test_dparam,
-         doSensParamBounds, 
+         doSensParamBounds, doCustomParamBounds, 
          doWeightRegions, weightedRegionsDict,
          doRegularizeByRegError, doRegularizeByMetricError, doRegularizeByRestrictingParamVals,
          beVerbose) = \
