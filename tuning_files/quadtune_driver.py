@@ -76,7 +76,6 @@ def main(args):
 
     print("Set up inputs . . .")
 
-
     if doUsePPEdata:
 
         import read_PPE_files
@@ -225,7 +224,8 @@ def main(args):
         paramsNamesScalesAndFilenames, folder_name,
         prescribedParamsNamesScalesAndValues,
         metricsNamesWeightsAndNormsCustom, 
-        debug_level, recovery_test_dparam, doSensParamBounds,
+        debug_level, recovery_test_dparam, 
+        doSensParamBounds, doCustomParamBounds, customParamBounds,
         doWeightRegions, weightedRegionsDict, beVerbose) \
         = \
             config_file.config_core()
@@ -336,6 +336,13 @@ def main(args):
                                     normMetricValsCol, magParamValsRow,
                                     sensNcFilenames, sensNcFilenamesExt, defaultNcFilename)
         
+        if doCustomParamBounds:
+            lowerBoundsArray, upperBoundsArray = \
+                    getLowerAndUpperCustomParamBoundArrays(paramsNames, customParamBounds)
+            normlzdLowerBoundsArray = lowerBoundsArray * np.reciprocal(magParamValsRow)
+            normlzdUpperBoundsArray = upperBoundsArray * np.reciprocal(magParamValsRow)
+            normlzdOrdDBoundsMin = normlzdLowerBoundsArray - defaultParamValsOrigRow * np.reciprocal(magParamValsRow)
+            normlzdOrdDBoundsMax = normlzdUpperBoundsArray - defaultParamValsOrigRow * np.reciprocal(magParamValsRow)
 
         # For prescribed parameters, construct numMetrics x numParams matrix of second derivatives, d2metrics/dparams2.
         # The derivatives are normalized by observed metric values and max param values.
@@ -516,6 +523,8 @@ def main(args):
                               defaultParamValsOrigRow,
                               normlzdOrdDparamsMin,
                               normlzdOrdDparamsMax,
+                              normlzdOrdDBoundsMin,
+                              normlzdOrdDBoundsMax,
                               normlzdSensMatrixPoly,
                               normlzdSensMatrixPolySST4K,
                               normlzdDefaultBiasesCol,
@@ -568,13 +577,15 @@ def main(args):
                          metricsWeights, normMetricValsCol, magParamValsRow,
                          defaultParamValsOrigRow,
                          normlzdOrdDparamsMin, normlzdOrdDparamsMax,
+                         normlzdOrdDBoundsMin, normlzdOrdDBoundsMin,
                          normlzdSensMatrixPolySvd, normlzdDefaultBiasesCol,
                          normlzdCurvMatrixSvd,
                          doPiecewise, normlzd_dpMid,
                          normlzdLeftSensMatrix, normlzdRightSensMatrix,
                          normlzdInteractDerivs, interactIdxs,
                          reglrCoef, penaltyCoef,
-                         doSensParamBounds, beVerbose)
+                         doSensParamBounds, doCustomParamBounds,
+                         beVerbose)
 
     y_hat_i = defaultBiasesApproxNonlin + defaultBiasesCol + obsMetricValsCol
 
@@ -991,6 +1002,7 @@ def solveUsingNonlin(metricsNames,
                      metricsWeights, normMetricValsCol, magParamValsRow,
                      defaultParamValsOrigRow,
                      normlzdOrdDparamsMin, normlzdOrdDparamsMax,
+                     normlzdOrdDBoundsMin, normlzdOrdDBoundsMax,
                      normlzdSensMatrix, normlzdDefaultBiasesCol,
                      normlzdCurvMatrix,
                      doPiecewise, normlzd_dpMid,
@@ -999,6 +1011,7 @@ def solveUsingNonlin(metricsNames,
                      reglrCoef = 0.0,
                      penaltyCoef = 0.0,
                      doSensParamBounds = False,
+                     doCustomParamBounds = False,
                      beVerbose = False):
     """Find optimal parameter values by minimizing quartic loss function"""
 
@@ -1008,7 +1021,10 @@ def solveUsingNonlin(metricsNames,
     # Don't let parameter values go negative
 #    lowerBoundsCol =  -defaultParamValsOrigRow[0]/magParamValsRow[0]
 
-    if doSensParamBounds: #don't let quadtune find solutions outside range spanned by default and sensitivity runs 
+    if doCustomParamBounds: #only works with doSensParamBounds = F
+      lowerBoundsCol = normlzdOrdDBoundsMin[0,:]
+      upperBoundsCol = normlzdOrdDBoundsMax[0,:]
+    elif doSensParamBounds: #don't let quadtune find solutions outside range spanned by default and sensitivity runs 
       lowerBoundsCol = normlzdOrdDparamsMin[0,:]
       upperBoundsCol = normlzdOrdDparamsMax[0,:]
     else: #no bounds on quadtune solutions
@@ -1265,7 +1281,7 @@ def constructNormlzdSensCurvMatrices(metricsNames, paramsNames, transformedParam
                 quit()
 
             normlzdOrdDparamsMin[arrayRow,arrayCol] = np.min(normlzdOrdDparams)
-            normlzdOrdDparamsMax[arrayRow,arrayCol]  = np.max(normlzdOrdDparams)
+            normlzdOrdDparamsMax[arrayRow,arrayCol] = np.max(normlzdOrdDparams)
 
             # Calculate second-order spline based on three given (x,y) points.
             metricValsSpline = UnivariateSpline(normlzdOrdParams,normlzdOrdMetrics,s=0,k=2)
@@ -1699,7 +1715,9 @@ def check_recovery_of_param_vals(debug_level: int, recovery_test_dparam: np.ndar
     defaultBiasesApproxNonlin2x, \
     defaultBiasesApproxNonlinNoCurv, defaultBiasesApproxNonlin2xCurv = \
         solveUsingNonlin(metricsNames, metricsWeights, normMetricsValsCol, magparamValsRow, \
-                        defaultParamValsOrigRow, normlzdOrdDparamsMin, normlzdOrdDparamsMax, normlzdSensMatrixPoly, -normlzdDefaultBiasesApproxNonlin,\
+                        defaultParamValsOrigRow, normlzdOrdDparamsMin, normlzdOrdDparamsMax, \
+                             normlzdOrdDBoundsMin, normlzdOrdDBoundsMin, \
+                                 normlzdSensMatrixPoly, -normlzdDefaultBiasesApproxNonlin,\
                             normlzdCurvMatrix, doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix,\
                                 normlzdRightSensMatrix, normlzdInteractDerivs, interactIdxs, reglrCoef, penaltyCoef)
     if beVerbose:
@@ -1741,6 +1759,23 @@ def reweight_regions_by_weightedRegionsDict(boxSize,numMetricsToTune,weightedReg
     metricsWeights = metricsWeights / (np.sum(metricsWeights)/numTuningMetrics)
     return metricsWeights
 
+def getLowerAndUpperCustomParamBoundArrays(paramsNames, customParamBounds):
+
+    lower = []
+    upper = []
+    
+    for p in paramsNames:
+        if p in customParamBounds:
+            lo, hi = customParamBounds[p]
+        else:
+            lo, hi = -999999999, 999999999
+        lower.append(lo)
+        upper.append(hi)
+    
+    lower = np.array(lower)
+    upper = np.array(upper)
+
+    return lower, upper
 
 if __name__ == '__main__':
     main(sys.argv[1:])
