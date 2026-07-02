@@ -433,7 +433,7 @@ def main(args):
         recovery_test_dparam = recovery_test_dparam *  np.ones((len(paramsNames),1))
         check_recovery_of_param_vals(debug_level, recovery_test_dparam, normlzdCurvMatrix, normlzdSensMatrixPoly,\
                                 doPiecewise, normlzd_dpMid, normlzdOrdDparamsMin, normlzdOrdDparamsMax,
-                                   normlzdOrdDBoundsMin, normlzdOrdDBoundsMin,
+                                   normlzdOrdDBoundsMin, normlzdOrdDBoundsMax,
                                   normlzdLeftSensMatrix, normlzdRightSensMatrix, numMetrics, normlzdInteractDerivs, interactIdxs,\
                                     metricsNames, metricsWeights, normMetricValsCol, magParamValsRow, defaultParamValsOrigRow, reglrCoef, penaltyCoef, beVerbose)
     normlzdDefaultBiasesCol = defaultBiasesCol / np.abs(normMetricValsCol)
@@ -1700,7 +1700,7 @@ def calc_dimensional_param_vals(dnormlzdparams,magParamValsRow,defaultParamValsO
 def check_recovery_of_param_vals(debug_level: int, recovery_test_dparam: np.ndarray, normlzdCurvMatrix, 
                             normlzdSensMatrixPoly, doPiecewise, normlzd_dpMid,
                             normlzdOrdDparamsMin, normlzdOrdDparamsMax,
-                            normlzdOrdDBoundsMin, normlzdOrdDBoundsMin,
+                            normlzdOrdDBoundsMin, normlzdOrdDBoundsMax,
                             normlzdLeftSensMatrix, normlzdRightSensMatrix,
                             numMetrics, normlzdInteractDerivs, interactIdxs,
                             metricsNames, metricsWeights, normMetricsValsCol,
