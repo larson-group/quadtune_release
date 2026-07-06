@@ -41,7 +41,9 @@ def config_core():
     # Requires doSensParamBounds = False
     # Include any parameters for which you want to set a custom range, and give the custom range
     # Example: customParamRanges={'clubb_c8':[3.6,4.6],'micro_mg_dcs':[0.00045,0.0007]}
-    # Parameters that are not included will not be bounded.
+    # The order of the parameters in the dictionary does not matter, QuadTune will handle it,
+    # and any parameters that are not included will not be bounded (i.e. infinite range).
+    # QuadTune will check to make sure that any parameters included here are actually being tuned.
     doCustomParamBounds = False
     customParamBounds = {'clubb_c8':[4.45,4.7],'cldfrc_dp1':[0.095,0.3]}
 
