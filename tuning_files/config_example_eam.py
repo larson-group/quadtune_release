@@ -358,6 +358,17 @@ def config_core():
         # 'hetfrz_dust_scalfacp_Regional.nc'],
         ]
 
+    if doCustomParamBounds:
+        valid_params = {entry[0] for entry in paramsNamesScalesAndSuffixes}
+
+        # Check that every custom bound corresponds to a known parameter
+        for param in customParamBounds:
+            if param not in valid_params:
+                raise ValueError(
+                    f"Parameter '{param}' is listed in customParamBounds "
+                    "but is not present in paramsNamesScalesAndSuffixes."
+                )
+
     interactParamsNamesAndFilenames = \
     [
     #    ('clubb_c_invrs_tau_wpxp_n2_thresh', 'clubb_c_invrs_tau_n2',

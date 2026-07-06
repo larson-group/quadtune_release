@@ -149,6 +149,16 @@ def config_core():
     ]
     )
 
+    if doCustomParamBounds:
+        valid_params = {entry[0] for entry in paramsNamesAndScales}
+
+        # Check that every custom bound corresponds to a known parameter
+        for param in customParamBounds:
+            if param not in valid_params:
+                raise ValueError(
+                    f"Parameter '{param}' is listed in customParamBounds "
+                    "but is not present in paramsNamesAndScales."
+                )
     
 
     """
