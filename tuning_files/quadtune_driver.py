@@ -92,7 +92,7 @@ def main(args):
          reglrCoef, penaltyCoef, doBootstrapSampling,
          paramsNamesAndScales, allparamsNamesInFile,
          debug_level, recovery_test_dparam,
-         doSensParamBounds, doCustomParamBounds, 
+         doSensParamBounds, doCustomParamBounds, customParamBounds, 
          doWeightRegions, weightedRegionsDict,
          doRegularizeByRegError, doRegularizeByMetricError, doRegularizeByRestrictingParamVals,
          beVerbose) = \
@@ -206,8 +206,10 @@ def main(args):
             sensNcFilenamesExt = None
             defaultNcFilename = None
 
-        normlzdOrdDBoundsMin = []
-        normlzdOrdDBoundsMax = []
+        # These are set to empty arrays because custom parameter bounds
+        # are not yet implemented for reading PPE files.
+        normlzdDCustomBoundsMin = []
+        normlzdDCustomBoundsMax = []
 
     else:
 
@@ -342,13 +344,11 @@ def main(args):
         if doCustomParamBounds:
             lowerBoundsArray, upperBoundsArray = \
                     getLowerAndUpperCustomParamBoundArrays(paramsNames, customParamBounds)
-            normlzdLowerBoundsArray = lowerBoundsArray * np.reciprocal(magParamValsRow)
-            normlzdUpperBoundsArray = upperBoundsArray * np.reciprocal(magParamValsRow)
-            normlzdOrdDBoundsMin = normlzdLowerBoundsArray - defaultParamValsOrigRow * np.reciprocal(magParamValsRow)
-            normlzdOrdDBoundsMax = normlzdUpperBoundsArray - defaultParamValsOrigRow * np.reciprocal(magParamValsRow)
+            normlzdDCustomBoundsMin = (lowerBoundsArray - defaultParamValsOrigRow) * np.reciprocal(magParamValsRow)
+            normlzdDCustomBoundsMax = (upperBoundsArray - defaultParamValsOrigRow) * np.reciprocal(magParamValsRow)
         else:
-            normlzdOrdDBoundsMin = []
-            normlzdOrdDBoundsMax = []
+            normlzdDCustomBoundsMin = []
+            normlzdDCustomBoundsMax = []
 
         # For prescribed parameters, construct numMetrics x numParams matrix of second derivatives, d2metrics/dparams2.
         # The derivatives are normalized by observed metric values and max param values.
@@ -436,7 +436,7 @@ def main(args):
         recovery_test_dparam = recovery_test_dparam *  np.ones((len(paramsNames),1))
         check_recovery_of_param_vals(debug_level, recovery_test_dparam, normlzdCurvMatrix, normlzdSensMatrixPoly,\
                                 doPiecewise, normlzd_dpMid, normlzdOrdDparamsMin, normlzdOrdDparamsMax,
-                                   normlzdOrdDBoundsMin, normlzdOrdDBoundsMax,
+                                   normlzdDCustomBoundsMin, normlzdDCustomBoundsMax,
                                   normlzdLeftSensMatrix, normlzdRightSensMatrix, numMetrics, normlzdInteractDerivs, interactIdxs,\
                                     metricsNames, metricsWeights, normMetricValsCol, magParamValsRow, defaultParamValsOrigRow, reglrCoef, penaltyCoef, beVerbose)
     normlzdDefaultBiasesCol = defaultBiasesCol / np.abs(normMetricValsCol)
@@ -530,8 +530,8 @@ def main(args):
                               defaultParamValsOrigRow,
                               normlzdOrdDparamsMin,
                               normlzdOrdDparamsMax,
-                              normlzdOrdDBoundsMin,
-                              normlzdOrdDBoundsMax,
+                              normlzdDCustomBoundsMin,
+                              normlzdDCustomBoundsMax,
                               normlzdSensMatrixPoly,
                               normlzdSensMatrixPolySST4K,
                               normlzdDefaultBiasesCol,
@@ -584,7 +584,7 @@ def main(args):
                          metricsWeights, normMetricValsCol, magParamValsRow,
                          defaultParamValsOrigRow,
                          normlzdOrdDparamsMin, normlzdOrdDparamsMax,
-                         normlzdOrdDBoundsMin, normlzdOrdDBoundsMax,
+                         normlzdDCustomBoundsMin, normlzdDCustomBoundsMax,
                          normlzdSensMatrixPolySvd, normlzdDefaultBiasesCol,
                          normlzdCurvMatrixSvd,
                          doPiecewise, normlzd_dpMid,
@@ -1009,7 +1009,7 @@ def solveUsingNonlin(metricsNames,
                      metricsWeights, normMetricValsCol, magParamValsRow,
                      defaultParamValsOrigRow,
                      normlzdOrdDparamsMin, normlzdOrdDparamsMax,
-                     normlzdOrdDBoundsMin, normlzdOrdDBoundsMax,
+                     normlzdDCustomBoundsMin, normlzdDCustomBoundsMax,
                      normlzdSensMatrix, normlzdDefaultBiasesCol,
                      normlzdCurvMatrix,
                      doPiecewise, normlzd_dpMid,
@@ -1029,8 +1029,8 @@ def solveUsingNonlin(metricsNames,
 #    lowerBoundsCol =  -defaultParamValsOrigRow[0]/magParamValsRow[0]
 
     if doCustomParamBounds: #only works with doSensParamBounds = F
-      lowerBoundsCol = normlzdOrdDBoundsMin[0,:]
-      upperBoundsCol = normlzdOrdDBoundsMax[0,:]
+      lowerBoundsCol = normlzdDCustomBoundsMin[0,:]
+      upperBoundsCol = normlzdDCustomBoundsMax[0,:]
     elif doSensParamBounds: #don't let quadtune find solutions outside range spanned by default and sensitivity runs 
       lowerBoundsCol = normlzdOrdDparamsMin[0,:]
       upperBoundsCol = normlzdOrdDparamsMax[0,:]
@@ -1703,7 +1703,7 @@ def calc_dimensional_param_vals(dnormlzdparams,magParamValsRow,defaultParamValsO
 def check_recovery_of_param_vals(debug_level: int, recovery_test_dparam: np.ndarray, normlzdCurvMatrix, 
                             normlzdSensMatrixPoly, doPiecewise, normlzd_dpMid,
                             normlzdOrdDparamsMin, normlzdOrdDparamsMax,
-                            normlzdOrdDBoundsMin, normlzdOrdDBoundsMax,
+                            normlzdDCustomBoundsMin, normlzdDCustomBoundsMax,
                             normlzdLeftSensMatrix, normlzdRightSensMatrix,
                             numMetrics, normlzdInteractDerivs, interactIdxs,
                             metricsNames, metricsWeights, normMetricsValsCol,
@@ -1724,7 +1724,7 @@ def check_recovery_of_param_vals(debug_level: int, recovery_test_dparam: np.ndar
     defaultBiasesApproxNonlinNoCurv, defaultBiasesApproxNonlin2xCurv = \
         solveUsingNonlin(metricsNames, metricsWeights, normMetricsValsCol, magparamValsRow, \
                         defaultParamValsOrigRow, normlzdOrdDparamsMin, normlzdOrdDparamsMax, \
-                             normlzdOrdDBoundsMin, normlzdOrdDBoundsMax, \
+                             normlzdDCustomBoundsMin, normlzdDCustomBoundsMax, \
                                  normlzdSensMatrixPoly, -normlzdDefaultBiasesApproxNonlin,\
                             normlzdCurvMatrix, doPiecewise, normlzd_dpMid, normlzdLeftSensMatrix,\
                                 normlzdRightSensMatrix, normlzdInteractDerivs, interactIdxs, reglrCoef, penaltyCoef)

@@ -45,6 +45,9 @@ def config_core():
     doCustomParamBounds = False
     customParamBounds = {'clubb_c8':[4.45,4.7],'cldfrc_dp1':[0.095,0.3]}
 
+    if doSensParamBounds and doCustomParamBounds:
+      sys.exit("Error: doSensParamBounds and doCustomParamBounds cannot both be true.")
+
     # L1 regularization coefficient, i.e., penalty on param perturbations in objFnc
     # Increase this value to 0.1 or 0.5 or so if you want to eliminate
     # unimportant parameters.
