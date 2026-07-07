@@ -98,7 +98,8 @@ def main(args):
          beVerbose) = \
             config_file.config_core()
 
-
+        if doCustomParamBounds:
+            sys.exit("Error: PPE data is not currently configured to use doCustomParamBounds = True.")    
 
         PPE_params = xr.open_dataset(PPE_params_filename,engine="netcdf4")
         PPE_metrics = xr.open_dataset(PPE_metrics_filename,engine="netcdf4")

@@ -88,6 +88,7 @@ def config_core():
     # The order of the parameters in the dictionary does not matter, QuadTune will handle it,
     # and any parameters that are not included will not be bounded (i.e. infinite range).
     # QuadTune will check to make sure that any parameters included here are actually being tuned.
+    # NOT CURRENTLY CONFIGURED FOR PPE. IN THIS FILE, SET doCustomParamBounds = False
     doCustomParamBounds = False
     customParamBounds = {'clubb_c8':[4.45,4.7],'cldfrc_dp1':[0.095,0.3]}
 
