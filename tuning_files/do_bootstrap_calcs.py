@@ -204,7 +204,10 @@ def computeJackknifeParams(metricsNames, paramsNames, metricsWeights, normMetric
                            normlzdLeftSensMatrix, normlzdRightSensMatrix,
                            reglrCoef, penaltyCoef):
     """
-    Computes jackknife estimates of tuned parameters by excluding each metric once and resolving the tuning.
+    Computes jackknife estimates of tuned parameters by excluding each global region once and resolving the tuning.
+    The exclusion of each global region is across all tuning metrics (i.e. for multiple tuning metrics---RESTOM, 
+    SWCF, etc.---the same global region is removed from each one), so that the remaining array can be neatly 
+    reshaped back into separate metrics for use in the "lossFncWithPenalty" function.
 
     Parameters:
         metricsNames (np.ndarray): Names of metrics, with shape (n_metrics,).
