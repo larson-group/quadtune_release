@@ -2,7 +2,8 @@ name: Run Quadtune Driver
 
 on:
   push:
-
+    paths-ignore:
+      - 'version_quadtune.txt'
 
 jobs:
   run-quadtune:
