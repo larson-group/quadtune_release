@@ -81,6 +81,19 @@ def config_core():
     # the range spanned by the default and sensitivity runs.
     doSensParamBounds = False
 
+    # Set custom parameter bounds
+    # Requires doSensParamBounds = False
+    # Include any parameters for which you want to set a custom range, and give the custom range
+    # Example: customParamRanges={'clubb_c8':[3.6,4.6],'micro_mg_dcs':[0.00045,0.0007]}
+    # The order of the parameters in the dictionary does not matter, QuadTune will handle it,
+    # and any parameters that are not included will not be bounded (i.e. infinite range).
+    # QuadTune will check to make sure that any parameters included here are actually being tuned.
+    # NOT CURRENTLY CONFIGURED FOR PPE. IN THIS FILE, SET doCustomParamBounds = False
+    doCustomParamBounds = False
+    customParamBounds = {'clubb_c8':[4.45,4.7],'cldfrc_dp1':[0.095,0.3]}
+
+    if doSensParamBounds and doCustomParamBounds:
+      sys.exit("Error: doSensParamBounds and doCustomParamBounds cannot both be true.")
 
     #Flag for whether the PPE members contributing most to the error of the quasi-linear regression should be excluded
     doRegularizeByRegError = False
@@ -154,7 +167,16 @@ def config_core():
     ]
     )
 
+    if doCustomParamBounds:
+        valid_params = {entry[0] for entry in paramsNamesAndScales}
 
+        # Check that every custom bound corresponds to a known parameter
+        for param in customParamBounds:
+            if param not in valid_params:
+                raise ValueError(
+                    f"Parameter '{param}' is listed in customParamBounds "
+                    "but is not present in paramsNamesAndScales."
+                )
     
     """
     Configure additional necessary information
@@ -179,7 +201,7 @@ def config_core():
          reglrCoef, penaltyCoef, doBootstrapSampling,
          paramsNamesAndScales, allparamsNamesInFile,
          debug_level, recovery_test_dparam,
-         doSensParamBounds,
+         doSensParamBounds, doCustomParamBounds, customParamBounds,
          doWeightRegions, weightedRegionsDict,
          doRegularizeByRegError, 
          doRegularizeByMetricError, doRegularizeByRestrictingParamVals,

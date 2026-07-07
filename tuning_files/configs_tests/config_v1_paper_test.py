@@ -34,6 +34,19 @@ def config_core():
     # the range spanned by the default and sensitivity runs.
     doSensParamBounds = False
 
+    # Set custom parameter bounds
+    # Requires doSensParamBounds = False
+    # Include any parameters for which you want to set a custom range, and give the custom range
+    # Example: customParamRanges={'clubb_c8':[3.6,4.6],'micro_mg_dcs':[0.00045,0.0007]}
+    # The order of the parameters in the dictionary does not matter, QuadTune will handle it,
+    # and any parameters that are not included will not be bounded (i.e. infinite range).
+    # QuadTune will check to make sure that any parameters included here are actually being tuned.
+    doCustomParamBounds = False
+    customParamBounds = {'clubb_c8':[4.45,4.7],'cldfrc_dp1':[0.095,0.3]}
+
+    if doSensParamBounds and doCustomParamBounds:
+      sys.exit("Error: doSensParamBounds and doCustomParamBounds cannot both be true.")
+
     # L1 regularization coefficient, i.e., penalty on param perturbations in objFnc
     # Increase this value to 0.1 or 0.5 or so if you want to eliminate
     # unimportant parameters.
@@ -145,6 +158,17 @@ def config_core():
          '5_Regional.nc'],
         ]
 
+    if doCustomParamBounds:
+        valid_params = {entry[0] for entry in paramsNamesScalesAndSuffixes}
+
+        # Check that every custom bound corresponds to a known parameter
+        for param in customParamBounds:
+            if param not in valid_params:
+                raise ValueError(
+                    f"Parameter '{param}' is listed in customParamBounds "
+                    "but is not present in paramsNamesScalesAndSuffixes."
+                )
+
     interactParamsNamesAndFilenames = \
     [
         ('clubb_c_invrs_tau_wpxp_n2_thresh', 'clubb_c8',
@@ -226,7 +250,8 @@ def config_core():
      paramsNamesScalesAndSuffixes, folder_name,
      prescribedParamsNamesScalesAndValues,
      metricsNamesWeightsAndNormsCustom,
-     debug_level, recovery_test_dparam, doSensParamBounds,
+     debug_level, recovery_test_dparam,
+     doSensParamBounds, doCustomParamBounds, customParamBounds,
      doWeightRegions, weightedRegionsDict, beVerbose)
 
 def config_plots(beVerbose: bool, varPrefixes:list[str], paramsNames:list[str]) -> tuple[dict[str, bool], np.ndarray, int, Callable]:
