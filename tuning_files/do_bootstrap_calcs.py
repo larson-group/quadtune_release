@@ -204,7 +204,10 @@ def computeJackknifeParams(metricsNames, paramsNames, metricsWeights, normMetric
                            normlzdLeftSensMatrix, normlzdRightSensMatrix,
                            reglrCoef, penaltyCoef):
     """
-    Computes jackknife estimates of tuned parameters by excluding each metric once and resolving the tuning.
+    Computes jackknife estimates of tuned parameters by excluding each global region once and resolving the tuning.
+    The exclusion of each global region is across all tuning metrics (i.e. for multiple tuning metrics---RESTOM, 
+    SWCF, etc.---the same global region is removed from each one), so that the remaining array can be neatly 
+    reshaped back into separate metrics for use in the "lossFncWithPenalty" function.
 
     Parameters:
         metricsNames (np.ndarray): Names of metrics, with shape (n_metrics,).
@@ -219,30 +222,38 @@ def computeJackknifeParams(metricsNames, paramsNames, metricsWeights, normMetric
         reglrCoef (float): Regularization coefficient.
 
     Returns:
-        jacknife_params (np.ndarray): Jackknife parameter estimates, with shape (n_metrics, n_params).
+        jackknife_params (np.ndarray): Jackknife parameter estimates, with shape (n_metrics, n_params).
     """
     from quadtune_driver import solveUsingNonlin
     print("Computing jackknife estimates . . .")
-    jacknifeParams = np.zeros((len(metricsNames), len(paramsNames), 1))
+    jackknifeParams = np.zeros((len(metricsNames), len(paramsNames), 1))
     interactDerivs = np.empty(0)
     interactIdxs = np.empty(0)
-    for i in range(len(metricsNames)):
-        _, _, jacknifeParams[i], *_ = solveUsingNonlin(np.delete(metricsNames, i),
-                                                       np.delete(metricsWeights, i, axis=0),
-                                                       np.delete(normMetricValsCol, i, axis=0),
+
+    numMetricFields = len(penaltyCoef)
+    numBoxesInMap_tmp = int(len(metricsNames)/numMetricFields)
+
+    for region in range(numBoxesInMap_tmp):
+    
+        deleteIdx = [region + m*numBoxesInMap_tmp for m in range(numMetricFields)]
+
+        _, _, jackknifeParams[region], *_ = solveUsingNonlin(np.delete(metricsNames, deleteIdx),
+                                                       np.delete(metricsWeights, deleteIdx, axis=0),
+                                                       np.delete(normMetricValsCol, deleteIdx, axis=0),
                                                        magParamValsRow,
                                                        defaultParamValsOrigRow,
                                                        normlzdOrdDparamsMin,normlzdOrdDparamsMax,
                                                        normlzdDCustomBoundsMin, normlzdDCustomBoundsMax,
-                                                       np.delete(normlzdSensMatrixPoly, i, axis=0),
-                                                       np.delete(normlzdDefaultBiasesCol, i, axis=0),
-                                                       np.delete(normlzdCurvMatrix, i, axis=0),
+                                                       np.delete(normlzdSensMatrixPoly, deleteIdx, axis=0),
+                                                       np.delete(normlzdDefaultBiasesCol, deleteIdx, axis=0),
+                                                       np.delete(normlzdCurvMatrix, deleteIdx, axis=0),
                                                        doPiecewise, normlzd_dpMid,
                                                        normlzdLeftSensMatrix, normlzdRightSensMatrix,
                                                        interactDerivs, interactIdxs,
                                                        reglrCoef, penaltyCoef,
                                                        beVerbose=False)
-    return jacknifeParams[:, :, 0]
+
+    return jackknifeParams[:, :, 0]
 
 
 def bcaIntervals(paramsBoot, paramsTuned, jackknifeParams, alpha=0.05):
