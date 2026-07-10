@@ -548,7 +548,7 @@ def denormalize_metrics_data(normalized_data, default_data, global_averages):
 
 def get_H_at_dp(SensMatrix, CurvMatrix, dp):
     """
-    Computes the approximated Hessian matrix
+    Computes the approximated Gramian matrix
     at a specific evaluation dp.
 
     Parameters
@@ -563,7 +563,7 @@ def get_H_at_dp(SensMatrix, CurvMatrix, dp):
     Returns
     -------
     numpy.ndarray
-        2D array of shape (N, N) representing the localized Hessian approximation.
+        2D array of shape (N, N) representing the local Gramian matrix.
     """
 
     J = SensMatrix + CurvMatrix * dp
@@ -604,18 +604,76 @@ def calc_A_opt_metrics(H_base, H_constr):
 
     return R_scale, E_RLS, R_shape, A_opt_over_n_slope
 
+def calc_all_A_opt_metrics(all_optimizations,used_fields, base_field, all_fields_data, paramset_idx):
+    """
+    Calculate the A-optimality metrics for all given fields
+
+    Parameters
+    ----------
+    all_optimizations: dict
+        Nested dictionary mapping field names to their optimization results.
+    used_fields : list of str
+        Names of all fields being evaluated (e.g. LWCF).
+    base_field: str
+        Name of the base field (primary observable constraint) in the denominator (e.g. SWCF).
+    all_fields_data : dict
+        Dictionary mapping field names to their respective sensitivity and curvature matrices.
+    paramset_idx: int
+        Index of where in all_optimizations the reference parameterset about which the linearisation is done is stored.
+
+    Returns
+    -------
+    tuple
+        - Scales_metrics (list of floats): Volumetric scaling ratio based on matrix determinants.
+        - E_RLS (list of floats): Expected ratios (A-optimality), with one for each field used in optimization.
+        - Shapes_metrics (list of floats): Shape alignment between base and constrained nullspaces.
+        - A_opt_over_n_slope (list of floats): Normalized slope of the A-optimality metric.
+    """
+    Scales_metrics = []
+    Shapes_metrics = []
+    E_RLS_allfields= []
+    A_opt_over_n_slopes = []
+
+
+    BaseSensMatrix, BaseCurvMatrix = all_fields_data[base_field][:2]
+
+    for field in used_fields:
+        if field == base_field:
+            continue
+        
+        opt_dict = all_optimizations[field]
+        values_list = list(opt_dict.values())
+        
+        constrained_parameter_set = np.array(values_list[paramset_idx][0])
+
+        # H is the P_n x P_n Gramian Matrix (S+C*diag(dp))^T (S+C*diag(dp)) where S is the sensitivity matrix and C the curvature matrix
+        ConstrSensMatrix, ConstrCurvMatrix = all_fields_data[field][:2]
+        H_Base = get_H_at_dp(BaseSensMatrix, BaseCurvMatrix, constrained_parameter_set)
+        H_Constr = get_H_at_dp(ConstrSensMatrix, ConstrCurvMatrix, constrained_parameter_set)
+
+
+        R_scale, E_RLS, R_shape, A_opt_over_n = calc_A_opt_metrics(H_Base, H_Constr)
+        
+
+        Scales_metrics.append(R_scale)
+        Shapes_metrics.append(R_shape)
+        E_RLS_allfields.append(E_RLS)
+        A_opt_over_n_slopes.append(A_opt_over_n)
+    
+    return Scales_metrics, E_RLS_allfields, Shapes_metrics, A_opt_over_n_slopes
+
 
 def calc_E_RR(H_base, H_constr):
     """
     Calculates the expected ratio (E_RR) using the trace of the
-    Hessian matrices.
+    Gramian matrices.
 
     Parameters
     ----------
     H_base : numpy.ndarray
-        Hessian matrix of the unconstrained base system (N, N).
+        Gramian matrix of the unconstrained base system (N, N).
     H_constr : numpy.ndarray
-        Hessian matrix of the constrained system (N, N).
+        Gramian matrix of the constrained system (N, N).
 
     Returns
     -------
@@ -628,6 +686,51 @@ def calc_E_RR(H_base, H_constr):
 
     return trace / H_base.shape[0]
 
+def calc_all_E_RR(all_optimizations, used_fields, base_field, all_fields_data, paramset_idx):
+    """
+    Calculates the expected ratio (E_RR) using the trace of the
+    Gramian matrices.
+
+    Parameters
+    ----------
+    all_optimizations: dict
+        Nested dictionary mapping field names to their optimization results.
+    used_fields : list of str
+        Names of all fields being evaluated (e.g. LWCF).
+    base_field: str
+        Name of the base field.
+    all_fields_data : dict
+        Dictionary mapping field names to their respective sensitivity and curvature matrices.
+    paramset_idx: int
+        Index of where in all_optimizations the reference parameterset about which the linearisation is done is stored.
+    
+    Returns
+    -------
+    list
+        E_RR values for all fields
+    """
+    E_RR_values = []
+
+    BaseSensMatrix, BaseCurvMatrix = all_fields_data[base_field][:2]
+
+
+    for field in used_fields:
+        if field == base_field:
+            continue
+            
+        opt_dict = all_optimizations[field]
+        values_list = list(opt_dict.values())
+        
+        constrained_parameter_set = np.array(values_list[paramset_idx][0])
+
+
+        ConstrSensMatrix, ConstrCurvMatrix = all_fields_data[field][:2]
+        H_B = get_H_at_dp(BaseSensMatrix, BaseCurvMatrix, constrained_parameter_set)
+        H_C = get_H_at_dp(ConstrSensMatrix, ConstrCurvMatrix, constrained_parameter_set)
+
+        E_RR_values.append(calc_E_RR(H_B, H_C))
+
+    return E_RR_values
 
 def normalize_params(params, default_params):
     """

@@ -31,3 +31,7 @@ jobs:
       - name: Run fit quad emulator to ppe test
         run: |
           pytest -k 'fit_quad_emulator_to_ppe'
+      
+      - name: Run max-ratio paper test
+        run: |
+          pytest -k 'max_ratio_paper'
