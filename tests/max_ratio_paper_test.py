@@ -25,7 +25,7 @@ def test_simulation_results():
     flattened_optimization_result  =create_max_ratio_paper_plots.main(["-d",data_path+"/data","--ppe_data",data_path+"/PPE_data","--ppe_data_sst4k",data_path+"/PPE_data_sst4k","-o", data_path+"/output_dir", "--constr_opt", "--testing"]) 
 
 
-
+    "Expected_keys contains the keys to the numpy arrays that contain the pre-calculated reference results"
     expected_keys = set(expected_optimizations_flat.files)
     actual_keys = set(flattened_optimization_result.keys())
     assert expected_keys == actual_keys, "The structure of the output dictionary has changed"

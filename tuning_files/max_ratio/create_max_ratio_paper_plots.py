@@ -363,7 +363,6 @@ def main(argv = None):
 
         flattened_results_dict["E_RR"] = np.array(E_RR)
 
-        # np.savez("reference_max_ratio_results.npz",**flattened_results_dict)
         return flattened_results_dict
     
 

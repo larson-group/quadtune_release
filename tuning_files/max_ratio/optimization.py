@@ -548,7 +548,7 @@ def denormalize_metrics_data(normalized_data, default_data, global_averages):
 
 def get_H_at_dp(SensMatrix, CurvMatrix, dp):
     """
-    Computes the approximated Hessian matrix
+    Computes the approximated Gramian matrix
     at a specific evaluation dp.
 
     Parameters
@@ -563,7 +563,7 @@ def get_H_at_dp(SensMatrix, CurvMatrix, dp):
     Returns
     -------
     numpy.ndarray
-        2D array of shape (N, N) representing the localized Hessian approximation.
+        2D array of shape (N, N) representing the local Gramian matrix.
     """
 
     J = SensMatrix + CurvMatrix * dp
@@ -615,7 +615,7 @@ def calc_all_A_opt_metrics(all_optimizations,used_fields, base_field, all_fields
     used_fields : list of str
         Names of all fields being evaluated (e.g. LWCF).
     base_field: str
-        Name of the base field (e.g. SWCF).
+        Name of the base field (primary observable constraint) in the denominator (e.g. SWCF).
     all_fields_data : dict
         Dictionary mapping field names to their respective sensitivity and curvature matrices.
     paramset_idx: int
@@ -646,7 +646,7 @@ def calc_all_A_opt_metrics(all_optimizations,used_fields, base_field, all_fields
         
         constrained_parameter_set = np.array(values_list[paramset_idx][0])
 
-
+        # H is the P_n x P_n Gramian Matrix (S+C*diag(dp))^T (S+C*diag(dp)) where S is the sensitivity matrix and C the curvature matrix
         ConstrSensMatrix, ConstrCurvMatrix = all_fields_data[field][:2]
         H_Base = get_H_at_dp(BaseSensMatrix, BaseCurvMatrix, constrained_parameter_set)
         H_Constr = get_H_at_dp(ConstrSensMatrix, ConstrCurvMatrix, constrained_parameter_set)
@@ -666,14 +666,14 @@ def calc_all_A_opt_metrics(all_optimizations,used_fields, base_field, all_fields
 def calc_E_RR(H_base, H_constr):
     """
     Calculates the expected ratio (E_RR) using the trace of the
-    Hessian matrices.
+    Gramian matrices.
 
     Parameters
     ----------
     H_base : numpy.ndarray
-        Hessian matrix of the unconstrained base system (N, N).
+        Gramian matrix of the unconstrained base system (N, N).
     H_constr : numpy.ndarray
-        Hessian matrix of the constrained system (N, N).
+        Gramian matrix of the constrained system (N, N).
 
     Returns
     -------
@@ -689,7 +689,7 @@ def calc_E_RR(H_base, H_constr):
 def calc_all_E_RR(all_optimizations, used_fields, base_field, all_fields_data, paramset_idx):
     """
     Calculates the expected ratio (E_RR) using the trace of the
-    Hessian matrices.
+    Gramian matrices.
 
     Parameters
     ----------
