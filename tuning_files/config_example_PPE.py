@@ -28,10 +28,17 @@ def config_core():
     '''
     Configure Filenames
     '''
-    PPE_metrics_filename = "PPE_Data/20H003_rshp_w_obs_Regional.nc"
+    size = 30
+
+    PPE_metrics_filename = f"PPE_Data/{size}H003_rshp_w_obs_Regional.nc"
+    # PPE_metrics_filename = "PPE_Data/PPE_7_5deg_metrics.nc"
+    # PPE_metrics_filename = "PPE_Data/PPE_15deg_metrics.nc"
 
 
     PPE_params_filename = "PPE_Data/H003_rshp_w_obs.nc"
+    # PPE_params_filename = "PPE_Data/PPE_7_5deg_metrics.nc"
+    # PPE_params_filename = "PPE_Data/PPE_15deg_metrics.nc"
+    
 
 
     '''
@@ -50,7 +57,7 @@ def config_core():
     # L1 regularization coefficient, i.e., penalty on param perturbations in objFnc
     # Increase this value to 0.1 or 0.5 or so if you want to eliminate
     # unimportant parameters.
-    reglrCoef = 0.0
+    reglrCoef = 0
 
     # Non-dimensional pre-factor of penalty term in loss function that penalizes when
     #   the tuner leaves a global-mean bias, i.e., when the residuals don't sum to zero.
@@ -74,16 +81,40 @@ def config_core():
     # the range spanned by the default and sensitivity runs.
     doSensParamBounds = False
 
+    # Set custom parameter bounds
+    # Requires doSensParamBounds = False
+    # Include any parameters for which you want to set a custom range, and give the custom range
+    # Example: customParamRanges={'clubb_c8':[3.6,4.6],'micro_mg_dcs':[0.00045,0.0007]}
+    # The order of the parameters in the dictionary does not matter, QuadTune will handle it,
+    # and any parameters that are not included will not be bounded (i.e. infinite range).
+    # QuadTune will check to make sure that any parameters included here are actually being tuned.
+    # NOT CURRENTLY CONFIGURED FOR PPE. IN THIS FILE, SET doCustomParamBounds = False
+    doCustomParamBounds = False
+    customParamBounds = {'clubb_c8':[4.45,4.7],'cldfrc_dp1':[0.095,0.3]}
+
+    if doSensParamBounds and doCustomParamBounds:
+      sys.exit("Error: doSensParamBounds and doCustomParamBounds cannot both be true.")
+
+    #Flag for whether the PPE members contributing most to the error of the quasi-linear regression should be excluded
+    doRegularizeByRegError = False
+
+    
+    #Flag for whether PPE members with the largest errors (default_metrics-PPE_metrics) should be excluded
+    doRegularizeByMetricError = False
+
+    #Flag for whether to regularize by restricitng a parameter to be above or below a specific value
+    doRegularizeByRestrictingParamVals = True
+
 
     '''
     Configure the resolution of the Data and which metrics and parameters to use
     '''
 
-    varPrefixes = ['SWCF']
+    varPrefixes = ['SWCF','LWCF']
 
-    boxSize = 20
+    boxSize = size
 
-    numBoxesInMap = (360//boxSize)*(180//boxSize)
+    numBoxesInMap = int(360/boxSize)*int(180/boxSize)
 
     numMetricsToTune = len(varPrefixes) * numBoxesInMap
 
@@ -128,15 +159,24 @@ def config_core():
         ['p3_nc_autocon_expon',1.0e0],
         ['p3_qc_accret_expon',1.0e0],
         ['zmconv_auto_fac',1.0e0],
-        ['zmconv_accr_fac',1.0e0],
+        ['zmconv_accr_fac',1.0e0], #The range of this parameter start at the default and only increases
         ['zmconv_ke',1.0e0],
         ['cldfrc_dp1',1.0e0],
         ['p3_embryonic_rain_size',1.0e0],
-        # ['p3_mincdnc',1.0e0]
+        ['p3_mincdnc',1.0e0]
     ]
     )
 
+    if doCustomParamBounds:
+        valid_params = {entry[0] for entry in paramsNamesAndScales}
 
+        # Check that every custom bound corresponds to a known parameter
+        for param in customParamBounds:
+            if param not in valid_params:
+                raise ValueError(
+                    f"Parameter '{param}' is listed in customParamBounds "
+                    "but is not present in paramsNamesAndScales."
+                )
     
     """
     Configure additional necessary information
@@ -161,8 +201,10 @@ def config_core():
          reglrCoef, penaltyCoef, doBootstrapSampling,
          paramsNamesAndScales, allparamsNamesInFile,
          debug_level, recovery_test_dparam,
-         doSensParamBounds,
+         doSensParamBounds, doCustomParamBounds, customParamBounds,
          doWeightRegions, weightedRegionsDict,
+         doRegularizeByRegError, 
+         doRegularizeByMetricError, doRegularizeByRestrictingParamVals,
          beVerbose)
 
 
@@ -205,7 +247,7 @@ def config_plots(beVerbose: bool, varPrefixes:list[str], paramsNames:list[str]) 
         'dpMin2PtFig': False,                      # Min param perturbation needed to simultaneously remove 2 biases
         'dpMinMatrixScatterFig': False,            # Scatterplot of min param perturbation for 2-bias removal
         'projectionMatrixFigs': False,             # Color-coded projection matrix
-        'biasesVsSensMagScatterplot': True,        # Biases vs. parameter sensitivities
+        'biasesVsSensMagScatterplot': False,        # Biases vs. parameter sensitivities
         'biasesVsSvdScatterplot': False,           # Left SV1*bias vs. left SV2*bias
         'paramsCorrArrayFig': True,                # Color-coded matrix showing correlations among parameters
         'sensMatrixAndBiasVecFig': False,          # Color-coded matrix equation
@@ -213,7 +255,8 @@ def config_plots(beVerbose: bool, varPrefixes:list[str], paramsNames:list[str]) 
         'PcSensMap': True,                         # Maps showing sensitivities to parameters and left singular vectors
         'vhMatrixFig': True,                       # Color-coded matrix of right singular vectors
         'lossFncVsParamFig': True,                 # 2D loss function plots
-        'SST4KPanelGallery': True                  # Maps showing metrics perturbation for parameters from Generalized Eigenvalue problem
+        'SST4KPanelGallery': True,                  # Maps showing metrics perturbation for parameters from Generalized Eigenvalue problem
+        'PureSensCurvGallery': True
     }
 
 
@@ -236,3 +279,20 @@ def config_plots(beVerbose: bool, varPrefixes:list[str], paramsNames:list[str]) 
 
 
     return createPlotType, highlightedMetricsToPlot, mapVarIdx, abbreviateParamsNames
+
+
+def config_additional(beVerbose:bool) -> tuple[str, str]:
+    """
+    Configure additional settings.
+    For example, specify SST4K filenames.
+    """
+
+    PPE_metrics_filename = "PPE_Data/sst4k_PPE_15deg_metrics.nc"
+    PPE_metrics_filename = "PPE_Data/sst4k_PPE_7_5deg_metrics.nc"
+
+    PPE_params_filename = "PPE_Data/sst4k_PPE_15deg_metrics.nc"
+    PPE_params_filename = "PPE_Data/sst4k_PPE_7_5deg_metrics.nc"
+    
+    
+
+    return PPE_params_filename, PPE_metrics_filename

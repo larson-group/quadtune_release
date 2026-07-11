@@ -2,7 +2,8 @@ name: Run Quadtune Driver
 
 on:
   push:
-
+    paths-ignore:
+      - 'version_quadtune.txt'
 
 jobs:
   run-quadtune:
@@ -25,4 +26,12 @@ jobs:
 
       - name: Run test from v1 paper
         run: |
-          pytest
+          pytest -k 'v1_paper'
+
+      - name: Run fit quad emulator to ppe test
+        run: |
+          pytest -k 'fit_quad_emulator_to_ppe'
+      
+      - name: Run max-ratio paper test
+        run: |
+          pytest -k 'max_ratio_paper'

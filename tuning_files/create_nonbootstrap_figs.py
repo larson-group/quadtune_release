@@ -44,7 +44,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                varPrefixes, mapVarIdx, boxSize,
                highlightedMetricsToPlot,
                paramsNames, paramsAbbrv, transformedParamsNames, paramsScales,
-               metricsWeights, obsMetricValsCol, normMetricValsCol, magParamValsRow,
+               metricsWeights, obsWeightsCol, obsMetricValsCol, normMetricValsCol, magParamValsRow,
                defaultBiasesCol, defaultBiasesApproxNonlin, defaultBiasesApproxElastic,
                defaultBiasesApproxNonlinNoCurv, defaultBiasesApproxNonlin2xCurv,
                normlzdDefaultBiasesCol,
@@ -504,14 +504,14 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                                               normMetricValsCol,
                                               metricsNames)
 
-    if ( len(varPrefixes) == 2 ):
-        dmetric1VsDmetric2Scatterplot = \
-            createDmetric1VsDmetric2Scatterplot(defaultBiasesApproxNonlin[:numBoxesInMap],
-                                                defaultBiasesApproxNonlin[numBoxesInMap:],
-                                                normMetricValsCol[:numBoxesInMap],
-                                                normMetricValsCol[numBoxesInMap:],
-                                                metricsNames[:numBoxesInMap],
-                                                varPrefixes)
+    # if ( len(varPrefixes) == 2 ):
+    #     dmetric1VsDmetric2Scatterplot = \
+    #         createDmetric1VsDmetric2Scatterplot(defaultBiasesApproxNonlin[:numBoxesInMap],
+    #                                             defaultBiasesApproxNonlin[numBoxesInMap:],
+    #                                             normMetricValsCol[:numBoxesInMap],
+    #                                             normMetricValsCol[numBoxesInMap:],
+    #                                             metricsNames[:numBoxesInMap],
+    #                                             varPrefixes)
 
     if createPlotType['biasesVsDiagnosticScatterplot']:
 
@@ -944,6 +944,10 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
            normlzdLinplusSensMatrixPoly[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdLinplusSensMatrixPolyColCenter[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            fwdFncNoInteractMatrix[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           obsMetricValsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           obsWeightsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           normMetricValsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           metricsWeights[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            paramsAbbrv,
            downloadConfig,
            useLongTitle,
@@ -969,8 +973,11 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
         print("Creating SST4KPanelGallery . . .")
             
 
-        OptimizedSensOnlyPanels = np.empty((2,len(paramsNames)+1), dtype=object)
-        OptimizedSensCurvPanels = np.empty((2,len(paramsNames)+1), dtype=object)
+        OptimizedSensOnlyPanels = np.empty((2,len(paramsNames)+2), dtype=object)
+        OptimizedSensCurvPanels = np.empty((2,len(paramsNames)+2), dtype=object)
+
+        MetricsSST4KMaxRatioParams = MetricsSST4KMaxRatioParams[:,:,mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes]
+        MetricsMaxRatioParams = MetricsMaxRatioParams[:,:,mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes]
 
 
         minField = np.minimum.reduce([np.min(MetricsSST4KMaxRatioParams[0,0,:]),
@@ -1011,6 +1018,66 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                 minField=minField,
                 maxField=maxField)
 
+        #Create panels with decentered and decnormalized values
+        normlzdDefaultBiasesColTemp = normlzdDefaultBiasesCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :]
+        obsMetricValsColTemp = obsMetricValsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :]
+        normMetricValsColTemp = normMetricValsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :]
+
+        defaultMetricValsColTemp = (normlzdDefaultBiasesColTemp * np.abs(normMetricValsColTemp)) +obsMetricValsColTemp
+
+        metricsWeightsTemp = metricsWeights[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :]
+
+
+        MetricsSensOnlyDenormalized = MetricsMaxRatioParams[0,0,:].reshape(-1,1) * np.abs(normMetricValsColTemp) + defaultMetricValsColTemp
+        MetricsSST4KSensOnlyDenormalized = MetricsSST4KMaxRatioParams[0,0,:].reshape(-1,1) * np.abs(normMetricValsColTemp) + defaultMetricValsColTemp
+
+        MetricsSensCurvDenormalized = MetricsMaxRatioParams[1,0,:].reshape(-1,1) * np.abs(normMetricValsColTemp) + defaultMetricValsColTemp
+        MetricsSST4KSensCurvDenormalized = MetricsSST4KMaxRatioParams[1,0,:].reshape(-1,1) * np.abs(normMetricValsColTemp) + defaultMetricValsColTemp
+
+
+
+        minFieldDenormalized = np.minimum.reduce([np.min(MetricsSensOnlyDenormalized),
+                                          np.min(MetricsSST4KSensOnlyDenormalized),
+                                          np.min(MetricsSensCurvDenormalized),
+                                          np.min(MetricsSST4KSensCurvDenormalized)])
+        maxFieldDenormalized = np.maximum.reduce([np.max(MetricsSensOnlyDenormalized),
+                                          np.max(MetricsSST4KSensOnlyDenormalized),
+                                          np.max(MetricsSensCurvDenormalized),
+                                          np.max(MetricsSST4KSensCurvDenormalized)])
+
+        mean_val = np.diag(np.dot(metricsWeightsTemp.reshape(-1,1,order='F').T, MetricsSensOnlyDenormalized.reshape(-1,1,order='F')))[0]
+        OptimizedSensOnlyPanels[0,1] = createMapPanel(
+                MetricsSensOnlyDenormalized,
+                480,
+                f'Linear Denormalized: Mean:{mean_val:.2f}',
+                boxSize,
+                minField=minFieldDenormalized,
+                maxField=maxFieldDenormalized)
+        mean_val = np.diag(np.dot(metricsWeightsTemp.reshape(-1,1,order='F').T, MetricsSST4KSensOnlyDenormalized.reshape(-1,1,order='F')))[0]
+        OptimizedSensOnlyPanels[1,1] = createMapPanel(
+                MetricsSST4KSensOnlyDenormalized,
+                480,
+                f'SST4K Linear Denormalized: Mean:{mean_val:.2f}',
+                boxSize,
+                minField=minFieldDenormalized,
+                maxField=maxFieldDenormalized)
+        mean_val = np.diag(np.dot(metricsWeightsTemp.reshape(-1,1,order='F').T, MetricsSensCurvDenormalized.reshape(-1,1,order='F')))[0]
+        OptimizedSensCurvPanels[0,1] = createMapPanel(
+                MetricsSensCurvDenormalized,
+                480,
+                f'NonLinear Denormalized: Mean:{mean_val:.2f}',
+                boxSize,
+                minField=minFieldDenormalized,
+                maxField=maxFieldDenormalized)
+        mean_val = np.diag(np.dot(metricsWeightsTemp.reshape(-1,1,order='F').T, MetricsSST4KSensCurvDenormalized.reshape(-1,1,order='F')))[0]
+        OptimizedSensCurvPanels[1,1] = createMapPanel(
+                MetricsSST4KSensCurvDenormalized,
+                480,
+                f'SST4K NonLinear Denormalized: Mean:{mean_val:.2f}',
+                boxSize,
+                minField=minFieldDenormalized,
+                maxField=maxFieldDenormalized)
+
         for paramIdx, paramName in enumerate(paramsNames):
             minField = np.minimum.reduce([np.min(MetricsSST4KMaxRatioParams[0,paramIdx+1,:]),
                                           np.min(MetricsSST4KMaxRatioParams[1,paramIdx+1,:]),
@@ -1020,7 +1087,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                                           np.max(MetricsSST4KMaxRatioParams[1,paramIdx+1,:]),
                                           np.max(MetricsMaxRatioParams[0,paramIdx+1,:]),
                                           np.max(MetricsMaxRatioParams[1,paramIdx+1,:])])
-            OptimizedSensOnlyPanels[0,paramIdx+1] = createMapPanel(
+            OptimizedSensOnlyPanels[0,paramIdx+2] = createMapPanel(
                     MetricsMaxRatioParams[0,paramIdx+1,:],
                     480,
                     f'Linear Metrics for {paramName}',
@@ -1028,7 +1095,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                     minField=minField,
                     maxField=maxField)
             
-            OptimizedSensOnlyPanels[1,paramIdx+1] = createMapPanel(
+            OptimizedSensOnlyPanels[1,paramIdx+2] = createMapPanel(
                     MetricsSST4KMaxRatioParams[0,paramIdx+1,:],
                     480,
                     f'SST4K Linear Metrics for {paramName}',
@@ -1036,14 +1103,14 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                     minField=minField,
                     maxField=maxField)
             
-            OptimizedSensCurvPanels[0,paramIdx+1] = createMapPanel(
+            OptimizedSensCurvPanels[0,paramIdx+2] = createMapPanel(
                     MetricsMaxRatioParams[1,paramIdx+1,:],
                     480,
                     f'NonLinear Metrics for {paramName}',
                     boxSize,
                     minField=minField,
                     maxField=maxField)
-            OptimizedSensCurvPanels[1,paramIdx+1] = createMapPanel(
+            OptimizedSensCurvPanels[1,paramIdx+2] = createMapPanel(
                     MetricsSST4KMaxRatioParams[1,paramIdx+1,:],
                     480,
                     f'SST4K NonLinear Metrics for {paramName}',
@@ -1051,6 +1118,34 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                     minField=minField,
                     maxField=maxField)
             
+    if createPlotType['PureSensCurvGallery']:
+
+        print("Creating sensitivity and curvature figures")
+        SensitivityPanels = np.empty(len(paramsNames), dtype=object)
+        CurvaturePanels = np.empty(len(paramsNames), dtype=object)
+
+        for paramIdx, param in enumerate(paramsNames):
+            sensitivity_data = normlzdSensMatrixPoly[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes,paramIdx]
+            curvature_data = normlzdCurvMatrix[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes,paramIdx]
+
+            SensitivityPanels[paramIdx] = createMapPanel(
+                sensitivity_data,
+                480,
+                f'Pure normalized sensitivity for {param}',
+                boxSize,
+                minField=np.min(sensitivity_data),
+                maxField=np.max(sensitivity_data)
+            )
+
+            CurvaturePanels[paramIdx] = createMapPanel(
+                curvature_data,
+                480,
+                f'Pure normalized curvature for {param}',
+                boxSize,
+                minField=np.min(curvature_data),
+                maxField=np.max(curvature_data)
+            )
+
 
 
 
@@ -1148,7 +1243,18 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
         dashboardChildren.append(html.H2(children=mapVarName, style={'text-indent': '450px'}))
         dashboardChildren.extend(BiasParamsDashboardChildren)
         dashboardChildren.extend(U0U3DashboardChildren)
-        #dashboardChildren.append(dcc.Graph(id='PcMapFig', figure=PcMapFig))
+
+    if createPlotType['PureSensCurvGallery']:
+        dashboardChildren.append(html.H2(children="Pure Sensitivities and Curvatures for each parameter", style={'text-indent': '450px'}))
+
+        first_col = html.Div([dcc.Graph(id=f"pure_sensitivity_panel_{i}", figure=fig, config=downloadConfig)
+                              for i, fig in enumerate(SensitivityPanels)])
+        second_col = html.Div([dcc.Graph(id=f"pure_curvature_panel_{i}", figure=fig, config=downloadConfig)
+                              for i, fig in enumerate(CurvaturePanels)])
+
+        dashboardChildren.append(html.Div([first_col,second_col], style={'display': 'flex'}))
+
+    #dashboardChildren.append(dcc.Graph(id='PcMapFig', figure=PcMapFig))
     if createPlotType['vhMatrixFig']:
         dashboardChildren.append(dcc.Graph(id='vhMatrixFig', figure=vhMatrixFig,
                                            config=downloadConfig))
@@ -1187,9 +1293,9 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
     if False:
         dashboardChildren.append(dcc.Graph(id='biasVsBiasApproxScatterplot', figure=biasVsBiasApproxScatterplot,
                                            config=downloadConfig))
-    if ( len(varPrefixes) == 2 ):
-        dashboardChildren.append(dcc.Graph(id='dmetric1VsDmetric2Scatterplot', figure=dmetric1VsDmetric2Scatterplot,
-                                           config=downloadConfig))
+    # if ( len(varPrefixes) == 2 ):
+    #     dashboardChildren.append(dcc.Graph(id='dmetric1VsDmetric2Scatterplot', figure=dmetric1VsDmetric2Scatterplot,
+    #                                        config=downloadConfig))
     #config= { 'toImageButtonOptions': { 'scale': 6 } }
     if createPlotType['biasesVsDiagnosticScatterplot']:
         dashboardChildren.append(dcc.Graph(id='biasVsDiagnosticScatterplot', figure=biasVsDiagnosticScatterplot,
@@ -1272,7 +1378,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
 
     sensMatrixDashboard.layout = html.Div(children=dashboardChildren)
 
-    sensMatrixDashboard.run(debug=True, use_reloader=False)
+    sensMatrixDashboard.run(debug=True, use_reloader=False,port=8010)
     # Some older versions of python require the dash_core_components library,
     #    which requires run_server
     #sensMatrixDashboard.run_server(debug=True, use_reloader=False)
@@ -1289,6 +1395,8 @@ def createMapGallery(
     normlzdLinplusSensMatrixPoly,
     normlzdLinplusSensMatrixPolyColCenter,
     fwdFncNoInteractMatrix,
+    obsMetricValsCol, obsWeightsCol,
+    normMetricValsCol, metricsWeights,
     paramsAbbrv,
     downloadConfig,
     useLongTitle,
@@ -1348,6 +1456,58 @@ def createMapGallery(
                   style={'display': 'inline-block'}, config=downloadConfig)
     ])]
 
+    #Denormalize and decenter the default-model bias in order to  recover the default-model solution
+    defaultMetricValsCol = (normlzdDefaultBiasesCol * np.abs(normMetricValsCol)) +obsMetricValsCol
+
+    #Compute the weighted global average of the default metric values
+    metricGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, 1, order='F').T,
+                                      defaultMetricValsCol.reshape(-1, 1, order='F')))
+
+    #Compute the weighted global average of the observed metric values
+    obsGlobalAvg = np.diag(np.dot(obsWeightsCol.reshape(-1,1,order='F').T, obsMetricValsCol.reshape(-1,1,order='F')))
+
+    #normlzdResid is not a column vector, so it has to be reshaped such that resid is a column vector and can be used in future computations.
+    resid = (-normlzdResid.reshape(-1,1) * np.abs(normMetricValsCol))
+    quadtunedMetricsCol = resid + obsMetricValsCol
+
+    quadtuneMetricsGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, 1, order='F').T,
+                                      (resid + obsGlobalAvg).reshape(-1, 1, order='F')))
+
+    minFieldVals = np.minimum.reduce([ np.min(defaultMetricValsCol),
+                                        np.min(quadtunedMetricsCol),
+                                          np.min(obsMetricValsCol)])
+    maxFieldVals = np.maximum.reduce([ np.max(defaultMetricValsCol),
+                                        np.max(quadtunedMetricsCol),
+                                         np.max(obsMetricValsCol) ])
+    PcMapPanelDefault = \
+        createMapPanel(fieldToPlotCol=defaultMetricValsCol,
+                       plotWidth=plotWidth,
+                       plotTitle=f"Default Values (Global Avg:{metricGlobalAvgs})",
+                       boxSize=boxSize,
+                       colorScale='RdBu_r',
+                       minField=minFieldVals,
+                       maxField=maxFieldVals,
+                       panelLabel='')
+
+
+
+    PcMapPanelQuadTune = \
+        createMapPanel(fieldToPlotCol=quadtunedMetricsCol,
+                       plotWidth=plotWidth,
+                       plotTitle=f"QuadTune Values (Global Avg:{quadtuneMetricsGlobalAvgs})",
+                       boxSize=boxSize,
+                       colorScale='RdBu_r',
+                       minField=minFieldVals,
+                       maxField=maxFieldVals,
+                       panelLabel='')
+
+    BiasParamsDashboardChildren.append(html.Div(children=[
+        dcc.Graph(figure=PcMapPanelDefault,
+                  style={'display': 'inline-block'}, config=downloadConfig),
+        dcc.Graph(figure=PcMapPanelQuadTune,
+                  style={'display': 'inline-block'}, config=downloadConfig)
+    ]))
+
     if useLongTitle:
         plotTitle="Normalized Tuned Atmospheric-Model Bias, normlzdGlobTunedBiasesCol"
     else:
@@ -1361,11 +1521,22 @@ def createMapGallery(
                        minField=minFieldBias,
                        maxField=maxFieldBias,
                        panelLabel='')
+                       panelLabel='')
+
+    PcMapPanelObs = \
+        createMapPanel(fieldToPlotCol=obsMetricValsCol,
+                       plotWidth=plotWidth,
+                       plotTitle=f"Observed Metric Values (Global Avg:{obsGlobalAvg})",
+                       boxSize=boxSize,
+                       colorScale='RdBu_r',
+                       minField=minFieldVals,
+                       maxField=maxFieldVals,
+                       panelLabel='')
 
     BiasParamsDashboardChildren.append(html.Div(children=[
+        dcc.Graph(figure=PcMapPanelObs,
+            style={'display': 'inline-block'}, config=downloadConfig),
         dcc.Graph(figure=PcMapPanelGlobTuned,
-                  style={'display': 'inline-block'}, config=downloadConfig),
-        dcc.Graph(figure=blankFig,
                   style={'display': 'inline-block'}, config=downloadConfig)
     ]))
 
@@ -1463,6 +1634,12 @@ def createMapGallery(
 
     u, s, vh = \
         np.linalg.svd(normlzdLinplusSensMatrixPolyColCenter, full_matrices=False)
+
+    #u, s, vh = \
+    #    np.linalg.svd(normlzdLinplusSensMatrixPoly, full_matrices=False)
+
+    #u, s, vh = \
+    #    np.linalg.svd(normlzdCurvMatrix, full_matrices=False)
 
     # Explained variance
     # https://stats.stackexchange.com/questions/171539/percentage-of-variation-in-each-column-explained-by-each-svd-mode
@@ -1639,7 +1816,7 @@ def createMapPanel(fieldToPlotCol,
     #regionalMapPanel.update_layout(width=700, height=450)
     #regionalMapPanel.update_layout(title=plotTitle, title_y=0.9, title_x=0.5)
     regionalMapPanel.update_layout(title=plotTitle + RsqdString,
-                                   title_y=0.9, title_yanchor='bottom',
+                                   title_y=0.95, title_yanchor='bottom',
                                    title_x=0.45, title_xanchor='center')
     regionalMapPanel.add_annotation(
         xref="paper", yref="paper",
@@ -1658,8 +1835,10 @@ def createMapPanel(fieldToPlotCol,
     #fieldToPlotMatrix = np.roll(fieldToPlotMatrix, -9, axis=1)
 
     # Set color scaling for colors of regional boxes
-    latRange = range(90, -90, -boxSize)
-    lonRange = range(0, 360, boxSize)
+    # latRange = range(90, -90, -boxSize)
+    latRange = np.arange(90, -90, -boxSize)
+    # lonRange = range(0, 360, boxSize)
+    lonRange = np.arange(0, 360, boxSize)
     normlzdColorMatrix = np.zeros_like(fieldToPlotMatrix)
     if minField == None or maxField == None:
         minField = np.min(fieldToPlotMatrix)
@@ -1672,8 +1851,8 @@ def createMapPanel(fieldToPlotCol,
     if ( True ):
     #if ( maxField > 0) & (minField < 0):
         #colorScale = 'RdBu_r'
-        for latIdx, lat in np.ndenumerate(latRange):
-            for lonIdx, lon in np.ndenumerate(lonRange):
+        for latIdx, lat in enumerate(latRange):
+            for lonIdx, lon in enumerate(lonRange):
                 normlzdColorMatrix[latIdx, lonIdx] = \
                     0.5 * fieldToPlotMatrix[latIdx, lonIdx] / rangeField + 0.5
                 #if fieldToPlotMatrix[latIdx][lonIdx] < 0:
@@ -3901,6 +4080,7 @@ def createLossFncVsParamPanels(
             yaxis_title = "Loss Function Value",
             legend = dict(x = 0.02, y = 0.98)
         )
+        fig.update_yaxes(tickformat=".3e")
 
         plots.append(fig)
 

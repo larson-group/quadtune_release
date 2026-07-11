@@ -37,6 +37,19 @@ def config_core():
     # the range spanned by the default and sensitivity runs.
     doSensParamBounds = True
 
+    # Set custom parameter bounds
+    # Requires doSensParamBounds = False
+    # Include any parameters for which you want to set a custom range, and give the custom range
+    # Example: customParamRanges={'clubb_c8':[3.6,4.6],'micro_mg_dcs':[0.00045,0.0007]}
+    # The order of the parameters in the dictionary does not matter, QuadTune will handle it,
+    # and any parameters that are not included will not be bounded (i.e. infinite range).
+    # QuadTune will check to make sure that any parameters included here are actually being tuned.
+    doCustomParamBounds = False
+    customParamBounds = {'clubb_c8':[4.45,4.7],'cldfrc_dp1':[0.095,0.3]}
+
+    if doSensParamBounds and doCustomParamBounds:
+      sys.exit("Error: doSensParamBounds and doCustomParamBounds cannot both be true.")
+
     # L1 regularization coefficient, i.e., penalty on param perturbations in objFnc
     # Increase this value to 0.1 or 0.5 or so if you want to eliminate
     # unimportant parameters.
@@ -66,7 +79,7 @@ def config_core():
     #   the metrics in the list beyond this number
     #   will appear in plots but not be counted in the tuning.
     boxSize = 20
-    numBoxesInMap = np.rint((360 / boxSize) * (180 / boxSize))
+    numBoxesInMap = np.rint( (360/boxSize) * (180/boxSize) )
 
     # varPrefixes needs to be defined before numMetricsToTune
     # since the latter is sometimes defined in terms of varPrefixes
@@ -108,7 +121,7 @@ def config_core():
     if doObsOffset and (len(obsOffset) != len(varPrefixes)):
         sys.exit("Error: obsOffset must be the same size as the number of variables to tune.")
 
-    obsOffsetCol = (obsOffset[:, np.newaxis] * np.ones((1, numBoxesInMap.astype(int)))).reshape(-1, 1)
+    obsOffsetCol = ( obsOffset[:, np.newaxis] * np.ones((1,numBoxesInMap.astype(int))) ).reshape(-1,1)
 
     # highlightedMetricsToPlot = np.array(['PRECT_5_5', 'PRECT_4_8',
     #                                     'PRECT_5_14',
@@ -147,7 +160,7 @@ def config_core():
     #    'Regional_files/stephens_20230920/117.f2c.taus_new_base_latest_mods6e_Regional.nc'
     defaultNcFilename = \
         (
-                folder_name + 'dflt_Regional.nc'
+            folder_name + 'dflt_Regional.nc'
             ###folder_name + '1_Regional.nc'
         )
 
@@ -366,11 +379,22 @@ def config_core():
             # 'hetfrz_dust_scalfacp_Regional.nc'],
         ]
 
+    if doCustomParamBounds:
+        valid_params = {entry[0] for entry in paramsNamesScalesAndSuffixes}
+
+        # Check that every custom bound corresponds to a known parameter
+        for param in customParamBounds:
+            if param not in valid_params:
+                raise ValueError(
+                    f"Parameter '{param}' is listed in customParamBounds "
+                    "but is not present in paramsNamesScalesAndSuffixes."
+                )
+
     interactParamsNamesAndFilenames = \
         []
     interactParamsNamesAndFilenamesType = np.dtype([('jParamName', object),
                                                     ('kParamName', object),
-                                                    ('filename', object)])
+                                                    ('filename',   object)])
     interactParamsNamesAndFilenames = np.array(interactParamsNamesAndFilenames,
                                                dtype=interactParamsNamesAndFilenamesType)
 
@@ -425,6 +449,9 @@ def config_core():
             # 'sens0707_4_Regional.nc',
             # 'sens0707_5_Regional.nc'], \
         ]
+
+
+
 
     # Read observed values of regional metrics on regular tiled grid into a Python dictionary
     (obsMetricValsDict, obsWeightsDict) = \
@@ -630,6 +657,23 @@ def config_core():
         }
 
     return (numMetricsToTune,
+     varPrefixes, boxSize,
+     doCreatePlots, metricsNorms,
+     obsMetricValsDict,
+     obsOffsetCol, obsGlobalAvgCol, doObsOffset,
+     obsWeightsCol,
+     transformedParamsNames,
+     defaultNcFilename, globTunedNcFilename,
+     interactParamsNamesAndFilenames,
+     doMaximizeRatio,
+     doPiecewise,
+     reglrCoef, penaltyCoef, doBootstrapSampling,
+     paramsNamesScalesAndSuffixes, folder_name,
+     prescribedParamsNamesScalesAndValues,
+     metricsNamesWeightsAndNormsCustom,
+     debug_level, recovery_test_dparam,
+     doSensParamBounds, doCustomParamBounds, customParamBounds,
+     doWeightRegions, weightedRegionsDict, beVerbose)
             varPrefixes, boxSize,
             doCreatePlots, metricsNorms,
             obsMetricValsDict,
@@ -733,6 +777,7 @@ def config_bootstrap(beVerbose: bool) -> int:
     :param beVerbose: Boolean flag to make output more verbose.
     """
     numBootstrapSamples: int = 100
+
 
     return numBootstrapSamples
 

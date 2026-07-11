@@ -31,7 +31,7 @@ and view the plots at http://127.0.0.1:8050/ in your web browser.
 
 ## Under the hood
 
-QuadTune takes  information from regional files in netcdf format.
+QuadTune takes information from regional files in netcdf format.
 
 Under the hood, `quadtune_driver.py` ingests information from `config.py`
 with the help of functions in `set_up_inputs.py`.  Then it

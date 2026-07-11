@@ -7,7 +7,17 @@ numpy~=2.2.4
 scipy~=1.15.2
 plotly~=6.0.1
 
+
+# Newer kaleido version is not working under windows for exporting plotly plots to disk
+kaleido==0.1.0.post1; sys_platform == 'win32'
+kaleido==0.2.1; sys_platform != 'win32'
+
 matplotlib~=3.10.1
 
 seaborn~=0.13.2
 pytest~=8.4.2
+
+xarray~=2025.11.0
+
+h5netcdf~=1.8.1
+h5py~=3.16.0
