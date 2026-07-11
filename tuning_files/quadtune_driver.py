@@ -735,10 +735,7 @@ def main(args):
                                     doPiecewise, normlzd_dpMid,
                                     normlzdLeftSensMatrix, normlzdRightSensMatrix,
                                     numMetrics)
-    #print("fwdFncNoInteractMatrix completely calculated")
 
-    if doMaximizeRatio:
-        print("-----------------Generalized Eigenvalue Problem and Ratio maximizing--------------------------\n")
     if  doMaximizeRatio:
 
         from maximize_SST4K_ratio import maximizeSST4KRatio
