@@ -1521,7 +1521,6 @@ def createMapGallery(
                        minField=minFieldBias,
                        maxField=maxFieldBias,
                        panelLabel='')
-                       panelLabel='')
 
     PcMapPanelObs = \
         createMapPanel(fieldToPlotCol=obsMetricValsCol,
