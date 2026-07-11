@@ -738,7 +738,8 @@ def config_plots(beVerbose: bool, varPrefixes: list[str], paramsNames: list[str]
         'PcSensMap': True,  # Maps showing sensitivities to parameters and left singular vectors
         'vhMatrixFig': True,  # Color-coded matrix of right singular vectors
         'lossFncVsParamFig': True,  # 2D loss function plots
-        'SST4KPanelGallery': False
+        'SST4KPanelGallery': False,
+        'PureSensCurvGallery': True
         # Maps showing metrics perturbation for parameters from Generalized Eigenvalue problem
     }
 
