@@ -29,6 +29,8 @@ from re import match
 
 
 import quadtune_driver
+from tuning_files.quadtune_driver import fwdFnc
+
 
 #######################################################################################################
 #
@@ -55,6 +57,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                dnormlzdParamsSolnNonlin,
                defaultParamValsOrigRow,
                normlzdGlobTunedBiasesCol, normlzdLinplusSensMatrixPoly,
+               fwdFncNoInteractMatrix,
                paramsSolnLin, dnormlzdParamsSolnLin,
                paramsSolnNonlin,
                paramsSolnElastic, dnormlzdParamsSolnElastic,
@@ -146,7 +149,11 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
     # The loss from a global simulation that uses the optimal parameter values recommended by QuadTune
     globTunedLossCol = np.square( normlzdGlobTunedBiasesCol * metricsWeights )
 
+    globTunedLossColUnweighted = np.square(normlzdGlobTunedBiasesCol)
+
     globTunedLossChange = globTunedLossCol - defaultLossCol
+
+    globTunedLossChangeUnweighted = defaultLossColUnweighted - defaultLossColUnweighted
 
     numBoxesInMap = np.rint((360 / boxSize) * (180 / boxSize)).astype(int)
 
@@ -235,13 +242,19 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
     # metricsNamesOrdered[whitelistedMetricsMask[metricsSensOrder]] gives the same list and order as
     # metricsNamesMasked[metricsSensMaskedOrder]
     # metricsNames[whitelistedMetricsMask] gives the same list, but in a different order
-    metricsSensMaskedOrder = metricsSensMasked.argsort()
+    ##metricsSensMaskedOrder = metricsSensMasked.argsort()
     #metricsSensMaskedOrder = np.arange(len(metricsSensMasked))
     #metricsSensMaskedOrder = np.array([3, 0, 1, 2])
+    metricsSensMaskedOrder = np.array([2, 1, 0, 3, 4])
+    metricsSensMaskedOrder = metricsSensMaskedOrder[:len(metricsNamesMasked)]
+    metricsSensMaskedOrder = metricsSensMaskedOrder[::-1]
+    metricsNamesMaskedOrdered = ['Indian Ocean', 'Somalia', 'CONUS', 'East Eq Pac', 'S Hemi Sc']
+    metricsNamesMaskedOrdered = metricsNamesMaskedOrdered[:len(metricsNamesMasked)]
+    metricsNamesMaskedOrdered = metricsNamesMaskedOrdered[::-1]
 
     #metricsSensMaskedOrder = np.argsort(np.argsort(highlightedMetricsToPlot))
 
-    metricsNamesMaskedOrdered = metricsNamesMasked[metricsSensMaskedOrder]
+    #metricsNamesMaskedOrdered = metricsNamesMasked[metricsSensMaskedOrder]
     normMetricValsColMaskedOrdered = normMetricValsColMasked[metricsSensMaskedOrder, 0]
     defaultBiasesColMaskedOrdered = defaultBiasesColMasked[metricsSensMaskedOrder, 0]
     defaultBiasesApproxNonlinMaskedOrdered = defaultBiasesApproxNonlinMasked[metricsSensMaskedOrder, 0]
@@ -282,8 +295,13 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
     #curvParamsMatrix = 0.5 * normlzdCurvMatrix * dnormlzdParamsSolnNonlinMatrix ** 2
     ##print("Sum rows=", np.sum(-normlzdSensParamsMatrixOrdered-curvParamsMatrixOrdered, axis=1))
     #minusNonlinMatrixDparamsOrdered = -1 * curvParamsMatrixOrdered + -1 * normlzdSensParamsMatrixOrdered
+    ##minusNonlinMatrixDparamsOrderedMasked = \
+    ##    minusNonlinMatrixDparamsOrdered[whitelistedMetricsMask[metricsSensOrder]]
+
+    minusNonlinMatrixDparamsMaskedCustom = \
+        -nonlinMatrixDparams[whitelistedMetricsMask, :]
     minusNonlinMatrixDparamsOrderedMasked = \
-        minusNonlinMatrixDparamsOrdered[whitelistedMetricsMask[metricsSensOrder]]
+        minusNonlinMatrixDparamsMaskedCustom[metricsSensMaskedOrder, :]
     #nonlinMatrixDparams = curvParamsMatrix + normlzdSensParamsMatrix
     nonlinMatrixDparamsMasked = nonlinMatrixDparams[whitelistedMetricsMask]
     nonlinMatrixDparamsMasked = nonlinMatrixDparamsMasked \
@@ -580,7 +598,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                               plotTitle = """Regional normalized biases vs.<br>     signed magnitude of sensitivity""",
                               xaxisTitle = "Signed magnitude of sensitivity<br>     of regional metrics to parameter changes",
                               yaxisTitle = "Default simulation regional biases",
-                              panelLabel="(a)",
+                              panelLabel="",
                               #plotTitle="""Regional normalized residuals vs. signed magnitude of sensitivity.""",
                               #xaxisTitle="Signed magnitude of sensitivity of regional metrics to parameter changes",
                               #yaxisTitle="Regional normalized residuals",
@@ -620,7 +638,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                               plotTitle = """Selected Points: Regional normalized biases vs.<br>     signed magnitude of sensitivity""",
                               xaxisTitle = "Signed magnitude of sensitivity<br>     of regional metrics to parameter changes",
                               yaxisTitle = "Default simulation regional biases",
-                              panelLabel="(b)",
+                              panelLabel="",
                               #plotTitle="""Regional normalized residuals vs. signed magnitude of sensitivity.""",
                               #xaxisTitle="Signed magnitude of sensitivity of regional metrics to parameter changes",
                               #yaxisTitle="Regional normalized residuals",
@@ -920,11 +938,12 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
            normlzdDefaultBiasesCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdResid[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes],
            normlzdGlobTunedBiasesCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
-           defaultLossCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
-           tunedLossChange[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
-           globTunedLossChange[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           defaultLossColUnweighted[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           tunedLossChangeUnweighted[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           globTunedLossChangeUnweighted[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdLinplusSensMatrixPoly[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdLinplusSensMatrixPolyColCenter[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           fwdFncNoInteractMatrix[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            paramsAbbrv,
            downloadConfig,
            useLongTitle,
@@ -1269,6 +1288,7 @@ def createMapGallery(
     globTunedLossChange,
     normlzdLinplusSensMatrixPoly,
     normlzdLinplusSensMatrixPolyColCenter,
+    fwdFncNoInteractMatrix,
     paramsAbbrv,
     downloadConfig,
     useLongTitle,
@@ -1304,7 +1324,7 @@ def createMapGallery(
                        colorScale='RdBu_r',
                        minField=minFieldBias,
                        maxField=maxFieldBias,
-                       panelLabel='(a)')
+                       panelLabel='')
 
 
     if useLongTitle:
@@ -1319,7 +1339,7 @@ def createMapGallery(
                        colorScale='RdBu_r',
                        minField=minFieldBias,
                        maxField=maxFieldBias,
-                       panelLabel='(b)')
+                       panelLabel='')
 
     BiasParamsDashboardChildren = [html.Div(children=[
         dcc.Graph(id="PcMapPanelBias", figure=PcMapPanelBias,
@@ -1340,7 +1360,7 @@ def createMapGallery(
                        colorScale='RdBu_r',
                        minField=minFieldBias,
                        maxField=maxFieldBias,
-                       panelLabel='(c)')
+                       panelLabel='')
 
     BiasParamsDashboardChildren.append(html.Div(children=[
         dcc.Graph(figure=PcMapPanelGlobTuned,
@@ -1419,69 +1439,30 @@ def createMapGallery(
                   style={'display': 'inline-block'}, config=downloadConfig)
     ]))
 
-    paramsIdx = 0
-    while paramsIdx < len(paramsAbbrv):
-        if useLongTitle:
-            plotTitle = f"normlzdLinplusSensMatrixPoly[:,{paramsAbbrv[paramsIdx]}]"
-        else:
-            plotTitle = f"Normalized Sensitivity to {paramsAbbrv[paramsIdx]}"
-        if paramsAbbrv[paramsIdx] == 'n2_thres':
-            panelLabel = '(a)'
-        elif paramsAbbrv[paramsIdx] == 'n2':
-            panelLabel = '(b)'
-        elif paramsAbbrv[paramsIdx] == 'c8':
-            panelLabel = '(c)'
-        else:
-            panelLabel = ''
-        leftFig = \
-            createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx],
-                           plotWidth=plotWidth,
-                           plotTitle=plotTitle,
-                           boxSize=boxSize,
-                           colorScale='RdBu_r',
-                           panelLabel=panelLabel)
-        if paramsIdx + 1 < len(paramsAbbrv):
-            if useLongTitle:
-                plotTitle = f"normlzdLinplusSensMatrixPoly[:,{paramsAbbrv[paramsIdx + 1]}]"
-            else:
-                plotTitle = f"Normalized Sensitivity to {paramsAbbrv[paramsIdx+1]}"
-            if paramsAbbrv[paramsIdx+1] == 'n2_thres':
-                panelLabel = '(a)'
-            elif paramsAbbrv[paramsIdx+1] == 'n2':
-                panelLabel = '(b)'
-            elif paramsAbbrv[paramsIdx+1] == 'c8':
-                panelLabel = '(c)'
-            else:
-                panelLabel = ''
-            rightFig = \
-                createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx + 1],
-                               plotWidth=plotWidth,
-                               plotTitle=plotTitle,
-                               boxSize=boxSize,
-                               colorScale='RdBu_r',
-                               panelLabel=panelLabel)
-        else:
-            rightFig = blankFig
+    createSensitivityPanelPairs(
+       BiasParamsDashboardChildren=BiasParamsDashboardChildren,
+       normlzdLinplusSensMatrixPoly=normlzdLinplusSensMatrixPoly,
+       paramsAbbrv=paramsAbbrv,
+       plotWidth=plotWidth,
+       boxSize=boxSize,
+       blankFig=blankFig,
+       downloadConfig=downloadConfig,
+       useLongTitle=useLongTitle,
+    )
 
-        BiasParamsDashboardChildren.append(html.Div(children=[
-            dcc.Graph(figure=leftFig, style={'display': 'inline-block'},
-                      config=downloadConfig),
-            dcc.Graph(figure=rightFig, style={'display': 'inline-block'},
-                      config=downloadConfig)
-        ]))
-
-        paramsIdx += 2
-
-    #print("1e6*defaultLossCol = ", 1e6*np.sort(defaultLossCol[:,0]))
+    createSensitivityPanelPairs(
+        BiasParamsDashboardChildren=BiasParamsDashboardChildren,
+        normlzdLinplusSensMatrixPoly=fwdFncNoInteractMatrix,
+        paramsAbbrv=paramsAbbrv,
+        plotWidth=plotWidth,
+        boxSize=boxSize,
+        blankFig=blankFig,
+        downloadConfig=downloadConfig,
+        useLongTitle=useLongTitle,
+    )
 
     u, s, vh = \
         np.linalg.svd(normlzdLinplusSensMatrixPolyColCenter, full_matrices=False)
-
-    #u, s, vh = \
-    #    np.linalg.svd(normlzdLinplusSensMatrixPoly, full_matrices=False)
-
-    #u, s, vh = \
-    #    np.linalg.svd(normlzdCurvMatrix, full_matrices=False)
 
     # Explained variance
     # https://stats.stackexchange.com/questions/171539/percentage-of-variation-in-each-column-explained-by-each-svd-mode
@@ -1540,6 +1521,77 @@ def createMapGallery(
     ]
 
     return (BiasParamsDashboardChildren, U0U3DashboardChildren)
+
+
+def createSensitivityPanelPairs(
+    *,
+    BiasParamsDashboardChildren,
+    normlzdLinplusSensMatrixPoly,
+    paramsAbbrv,
+    plotWidth,
+    boxSize,
+    blankFig,
+    downloadConfig,
+    useLongTitle,
+):
+    """
+    Append pairs of sensitivity-map panels (two parameters per row) to BiasParamsDashboardChildren.
+    """
+    paramsIdx = 0
+    while paramsIdx < len(paramsAbbrv):
+        if useLongTitle:
+            plotTitle = f"normlzdLinplusSensMatrixPoly[:,{paramsAbbrv[paramsIdx]}]"
+        else:
+            plotTitle = f"Normalized Sensitivity to {paramsAbbrv[paramsIdx]}"
+        if paramsAbbrv[paramsIdx] == 'n2_thres':
+            panelLabel = '(a)'
+        elif paramsAbbrv[paramsIdx] == 'n2':
+            panelLabel = '(b)'
+        elif paramsAbbrv[paramsIdx] == 'c8':
+            panelLabel = ''
+        else:
+            panelLabel = ''
+        leftFig = \
+            createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx],
+                           plotWidth=plotWidth,
+                           plotTitle=plotTitle,
+                           boxSize=boxSize,
+                           colorScale='RdBu_r',
+                           panelLabel=panelLabel)
+        if paramsIdx + 1 < len(paramsAbbrv):
+            if useLongTitle:
+                plotTitle = f"normlzdLinplusSensMatrixPoly[:,{paramsAbbrv[paramsIdx + 1]}]"
+            else:
+                plotTitle = f"Normalized Sensitivity to {paramsAbbrv[paramsIdx+1]}"
+            if paramsAbbrv[paramsIdx+1] == 'n2_thres':
+                panelLabel = '(a)'
+            elif paramsAbbrv[paramsIdx+1] == 'n2':
+                panelLabel = '(b)'
+            elif paramsAbbrv[paramsIdx+1] == 'c8':
+                panelLabel = ''
+            else:
+                panelLabel = ''
+            rightFig = \
+                createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx + 1],
+                               plotWidth=plotWidth,
+                               plotTitle=plotTitle,
+                               boxSize=boxSize,
+                               colorScale='RdBu_r',
+                               panelLabel=panelLabel)
+        else:
+            rightFig = blankFig
+
+        BiasParamsDashboardChildren.append(html.Div(children=[
+            dcc.Graph(figure=leftFig, style={'display': 'inline-block'},
+                      config=downloadConfig),
+            dcc.Graph(figure=rightFig, style={'display': 'inline-block'},
+                      config=downloadConfig)
+        ]))
+
+        paramsIdx += 2
+
+    #print("1e6*defaultLossCol = ", 1e6*np.sort(defaultLossCol[:,0]))
+
 
 def createMapPanel(fieldToPlotCol,
                    plotWidth,
@@ -2034,6 +2086,7 @@ def createMetricsBarChart(metricsNames, paramsNames,
     normlzdResidBias = -(-defaultBiasesApproxNonlin - defaultBiasesCol) \
                        / np.abs(normMetricValsCol)
 
+    # Build up bar with color segments
     biases = np.reshape(biases, (-1, 1))
     barBase = np.copy(biases)  # np.copy prevents biases variable from changing
     rightEnd = np.copy(biases)

@@ -632,6 +632,14 @@ def main(args):
                                     normlzdCurvMatrix, numMetrics)
     #normlzdWeightedLinplusSensMatrixPoly = np.diag(np.transpose(metricsWeights)[0]) \
     #                                          @ normlzdLinplusSensMatrixPoly
+
+    fwdFncNoInteractMatrix = \
+        constructFwdFncNoInteractMatrix(dnormlzdParamsSolnNonlin, normlzdSensMatrixPoly, normlzdCurvMatrix,
+                                    doPiecewise, normlzd_dpMid,
+                                    normlzdLeftSensMatrix, normlzdRightSensMatrix,
+                                    numMetrics)
+    #print("fwdFncNoInteractMatrix completely calculated")
+
     if doMaximizeRatio:
         print("-----------------Generalized Eigenvalue Problem and Ratio maximizing--------------------------\n")
 
@@ -867,6 +875,7 @@ def main(args):
                 dnormlzdParamsSolnNonlin,
                 defaultParamValsOrigRow,
                 normlzdGlobTunedBiasesCol, normlzdLinplusSensMatrixPoly,
+                fwdFncNoInteractMatrix,
                 paramsSolnLin, dnormlzdParamsSolnLin,
                 paramsSolnNonlin,
                 paramsSolnElastic, dnormlzdParamsSolnElastic,
@@ -1089,6 +1098,37 @@ def lossFncWithPenalty(dnormlzdParams, normlzdSensMatrix, normlzdDefaultBiasesCo
     #            + reglrCoef * np.linalg.norm( dnormlzdParams, ord=1 )
 
     return chisqd
+
+
+def constructFwdFncNoInteractMatrix(dnormlzdParams, normlzdSensMatrix, normlzdCurvMatrix,
+           doPiecewise, normlzd_dpMid,
+           normlzdLeftSensMatrix, normlzdRightSensMatrix,
+           numMetrics):
+    """Construct matrix of defaultBiasesApproxNonlin column vectors by calling fwdFncNoInteract
+           for each parameter varied one at a time,
+           in order to calculate ( dm_i/dp_j*dp_j + 0.5d2m_i/dp2_j*dp_j2 ) (no sum over j).
+           Each row can be summed to calculate the total effect of all parameters on metric m_i,
+           assuming that parameter interactions are neglected."""
+
+    fwdFncNoInteractMatrix = np.zeros((numMetrics,len(dnormlzdParams)))
+
+    paramsIdx = 0
+    for paramsIdx, dnormlzdParam in enumerate(dnormlzdParams[:,0]):
+
+        dnormlzdParamsOAT = np.zeros_like(dnormlzdParams)
+
+        dnormlzdParamsOAT[paramsIdx,:] = dnormlzdParam
+
+        fwdFncNoInteractMatrix[:, paramsIdx] = \
+            fwdFncNoInteract(dnormlzdParamsOAT, normlzdSensMatrix, normlzdCurvMatrix,
+                         doPiecewise, normlzd_dpMid,
+                         normlzdLeftSensMatrix, normlzdRightSensMatrix,
+                         numMetrics).reshape(-1)
+
+        #print("iteration through matrix")
+
+    return fwdFncNoInteractMatrix
+
 
 def solveUsingNonlin(metricsNames,
                      metricsWeights, normMetricValsCol, magParamValsRow,
