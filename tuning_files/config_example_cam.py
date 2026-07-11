@@ -674,22 +674,22 @@ def config_core():
      debug_level, recovery_test_dparam,
      doSensParamBounds, doCustomParamBounds, customParamBounds,
      doWeightRegions, weightedRegionsDict, beVerbose)
-            varPrefixes, boxSize,
-            doCreatePlots, metricsNorms,
-            obsMetricValsDict,
-            obsOffsetCol, obsGlobalAvgCol, doObsOffset,
-            obsWeightsCol,
-            transformedParamsNames,
-            defaultNcFilename, globTunedNcFilename,
-            interactParamsNamesAndFilenames,
-            doMaximizeRatio,
-            doPiecewise,
-            reglrCoef, penaltyCoef, doBootstrapSampling,
-            paramsNamesScalesAndSuffixes, folder_name,
-            prescribedParamsNamesScalesAndValues,
-            metricsNamesWeightsAndNormsCustom,
-            debug_level, recovery_test_dparam, doSensParamBounds,
-            doWeightRegions, weightedRegionsDict, beVerbose)
+#            varPrefixes, boxSize,
+#            doCreatePlots, metricsNorms,
+#            obsMetricValsDict,
+#            obsOffsetCol, obsGlobalAvgCol, doObsOffset,
+#            obsWeightsCol,
+#            transformedParamsNames,
+#            defaultNcFilename, globTunedNcFilename,
+#            interactParamsNamesAndFilenames,
+#            doMaximizeRatio,
+#            doPiecewise,
+#            reglrCoef, penaltyCoef, doBootstrapSampling,
+#            paramsNamesScalesAndSuffixes, folder_name,
+#            prescribedParamsNamesScalesAndValues,
+#            metricsNamesWeightsAndNormsCustom,
+#            debug_level, recovery_test_dparam, doSensParamBounds,
+#            doWeightRegions, weightedRegionsDict, beVerbose)
 
 
 def config_plots(beVerbose: bool, varPrefixes: list[str], paramsNames: list[str]) -> tuple[
