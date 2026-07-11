@@ -151,9 +151,9 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
 
     globTunedLossColUnweighted = np.square(normlzdGlobTunedBiasesCol)
 
-    globTunedLossChange = globTunedLossCol - defaultLossCol
+    globTunedLossChangeUnweighted = globTunedLossColUnweighted - defaultLossColUnweighted
 
-    globTunedLossChangeUnweighted = defaultLossColUnweighted - defaultLossColUnweighted
+    globTunedLossChange = globTunedLossCol - defaultLossCol
 
     numBoxesInMap = np.rint((360 / boxSize) * (180 / boxSize)).astype(int)
 
@@ -242,19 +242,13 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
     # metricsNamesOrdered[whitelistedMetricsMask[metricsSensOrder]] gives the same list and order as
     # metricsNamesMasked[metricsSensMaskedOrder]
     # metricsNames[whitelistedMetricsMask] gives the same list, but in a different order
-    ##metricsSensMaskedOrder = metricsSensMasked.argsort()
+    metricsSensMaskedOrder = metricsSensMasked.argsort()
     #metricsSensMaskedOrder = np.arange(len(metricsSensMasked))
     #metricsSensMaskedOrder = np.array([3, 0, 1, 2])
-    metricsSensMaskedOrder = np.array([2, 1, 0, 3, 4])
-    metricsSensMaskedOrder = metricsSensMaskedOrder[:len(metricsNamesMasked)]
-    metricsSensMaskedOrder = metricsSensMaskedOrder[::-1]
-    metricsNamesMaskedOrdered = ['Indian Ocean', 'Somalia', 'CONUS', 'East Eq Pac', 'S Hemi Sc']
-    metricsNamesMaskedOrdered = metricsNamesMaskedOrdered[:len(metricsNamesMasked)]
-    metricsNamesMaskedOrdered = metricsNamesMaskedOrdered[::-1]
 
     #metricsSensMaskedOrder = np.argsort(np.argsort(highlightedMetricsToPlot))
 
-    #metricsNamesMaskedOrdered = metricsNamesMasked[metricsSensMaskedOrder]
+    metricsNamesMaskedOrdered = metricsNamesMasked[metricsSensMaskedOrder]
     normMetricValsColMaskedOrdered = normMetricValsColMasked[metricsSensMaskedOrder, 0]
     defaultBiasesColMaskedOrdered = defaultBiasesColMasked[metricsSensMaskedOrder, 0]
     defaultBiasesApproxNonlinMaskedOrdered = defaultBiasesApproxNonlinMasked[metricsSensMaskedOrder, 0]
@@ -295,13 +289,8 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
     #curvParamsMatrix = 0.5 * normlzdCurvMatrix * dnormlzdParamsSolnNonlinMatrix ** 2
     ##print("Sum rows=", np.sum(-normlzdSensParamsMatrixOrdered-curvParamsMatrixOrdered, axis=1))
     #minusNonlinMatrixDparamsOrdered = -1 * curvParamsMatrixOrdered + -1 * normlzdSensParamsMatrixOrdered
-    ##minusNonlinMatrixDparamsOrderedMasked = \
-    ##    minusNonlinMatrixDparamsOrdered[whitelistedMetricsMask[metricsSensOrder]]
-
-    minusNonlinMatrixDparamsMaskedCustom = \
-        -nonlinMatrixDparams[whitelistedMetricsMask, :]
     minusNonlinMatrixDparamsOrderedMasked = \
-        minusNonlinMatrixDparamsMaskedCustom[metricsSensMaskedOrder, :]
+        minusNonlinMatrixDparamsOrdered[whitelistedMetricsMask[metricsSensOrder]]
     #nonlinMatrixDparams = curvParamsMatrix + normlzdSensParamsMatrix
     nonlinMatrixDparamsMasked = nonlinMatrixDparams[whitelistedMetricsMask]
     nonlinMatrixDparamsMasked = nonlinMatrixDparamsMasked \
@@ -598,7 +587,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                               plotTitle = """Regional normalized biases vs.<br>     signed magnitude of sensitivity""",
                               xaxisTitle = "Signed magnitude of sensitivity<br>     of regional metrics to parameter changes",
                               yaxisTitle = "Default simulation regional biases",
-                              panelLabel="",
+                              panelLabel="(a)",
                               #plotTitle="""Regional normalized residuals vs. signed magnitude of sensitivity.""",
                               #xaxisTitle="Signed magnitude of sensitivity of regional metrics to parameter changes",
                               #yaxisTitle="Regional normalized residuals",
@@ -638,7 +627,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                               plotTitle = """Selected Points: Regional normalized biases vs.<br>     signed magnitude of sensitivity""",
                               xaxisTitle = "Signed magnitude of sensitivity<br>     of regional metrics to parameter changes",
                               yaxisTitle = "Default simulation regional biases",
-                              panelLabel="",
+                              panelLabel="(b)",
                               #plotTitle="""Regional normalized residuals vs. signed magnitude of sensitivity.""",
                               #xaxisTitle="Signed magnitude of sensitivity of regional metrics to parameter changes",
                               #yaxisTitle="Regional normalized residuals",
@@ -938,9 +927,9 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
            normlzdDefaultBiasesCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdResid[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes],
            normlzdGlobTunedBiasesCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
-           defaultLossColUnweighted[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
-           tunedLossChangeUnweighted[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
-           globTunedLossChangeUnweighted[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           defaultLossCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           tunedLossChange[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
+           globTunedLossChange[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdLinplusSensMatrixPoly[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            normlzdLinplusSensMatrixPolyColCenter[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
            fwdFncNoInteractMatrix[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :],
@@ -1222,7 +1211,9 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
 
 
 
-    if createPlotType["SST4KPanelGallery"]: 
+
+
+    if createPlotType["SST4KPanelGallery"]:
 
         dashboardChildren.append(html.H2(children="Lin and NonLin maps for Ratio-maximizing parameters", style={'text-indent': '450px'}))
 
@@ -1537,6 +1528,7 @@ def createMapGallery(
             style={'display': 'inline-block'}, config=downloadConfig),
         dcc.Graph(figure=PcMapPanelGlobTuned,
                   style={'display': 'inline-block'}, config=downloadConfig)
+
     ]))
 
     sqrtDefaultLoss = -1e3*np.sqrt(defaultLossCol)
