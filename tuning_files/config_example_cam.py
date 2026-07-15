@@ -63,6 +63,10 @@ def config_core():
     # Flag for whether or not to create plots after the tuning is done.
     doCreatePlots = True
 
+    # Flag to have the sensitivity plots all have the same colorbar limits.
+    # This makes it easier to compare sensitivities.
+    doSameSensColorbarLimits = True
+
     # Flag to enable reading SST4K regional files
     doMaximizeRatio = False
 
@@ -630,7 +634,8 @@ def config_core():
 
     return (numMetricsToTune,
      varPrefixes, boxSize,
-     doCreatePlots, metricsNorms,
+     doCreatePlots, doSameSensColorbarLimits,
+     metricsNorms,
      obsMetricValsDict,
      obsOffsetCol, obsGlobalAvgCol, doObsOffset,
      obsWeightsCol,

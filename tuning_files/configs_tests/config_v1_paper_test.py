@@ -60,6 +60,10 @@ def config_core():
 
     doCreatePlots = False
 
+    # Flag to have the sensitivity plots all have the same colorbar limits.
+    # This makes it easier to compare sensitivities.
+    doSameSensColorbarLimits = True
+
     # doPiecewise = True if using a piecewise linear emulator
     doPiecewise = False
 
@@ -237,7 +241,8 @@ def config_core():
 
     return ( numMetricsToTune,
      varPrefixes, boxSize,
-     doCreatePlots, metricsNorms,
+     doCreatePlots, doSameSensColorbarLimits,
+     metricsNorms,
      obsMetricValsDict,
      obsOffsetCol, obsGlobalAvgCol, doObsOffset,
      obsWeightsCol,

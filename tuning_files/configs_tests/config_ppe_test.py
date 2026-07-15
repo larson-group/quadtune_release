@@ -59,6 +59,10 @@ def config_core():
     #    in create_nonbootstrap_figs.py
     doCreatePlots = False
 
+    # Flag to have the sensitivity plots all have the same colorbar limits.
+    # This makes it easier to compare sensitivities.
+    doSameSensColorbarLimits = True
+
     # Flag to enable reading SST4K regional files
     doMaximizeRatio = False
 
@@ -178,7 +182,7 @@ def config_core():
 
     return (numMetricsToTune,
          varPrefixes, boxSize,
-         doCreatePlots,
+         doCreatePlots, doSameSensColorbarLimits,
          PPE_metrics_filename, PPE_params_filename,
          doMaximizeRatio,
          doPiecewise,

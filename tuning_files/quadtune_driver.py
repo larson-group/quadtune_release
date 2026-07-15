@@ -84,7 +84,7 @@ def main(args):
 
         (numMetricsToTune,
          varPrefixes, boxSize,
-         doCreatePlots,
+         doCreatePlots, doSameSensColorbarLimits,
          PPE_metrics_filename, PPE_params_filename,
          doMaximizeRatio,
          doPiecewise,
@@ -217,7 +217,8 @@ def main(args):
         # The user should input all tuning configuration info into file set_up_inputs.py
         (numMetricsToTune,
         varPrefixes, boxSize,
-        doCreatePlots, metricsNorms,
+        doCreatePlots, doSameSensColorbarLimits,
+        metricsNorms,
         obsMetricValsDict,
         obsOffsetCol, obsGlobalAvgCol, doObsOffset,
         obsWeightsCol,
@@ -790,6 +791,7 @@ def main(args):
                 MetricsMaxRatioParams, MetricsSST4KMaxRatioParams,
                 createPlotType,
                 reglrCoef, penaltyCoef, numMetrics,
+                doSameSensColorbarLimits,
                 beVerbose,
                 useLongTitle=False, paramBoundsBoot=paramBoundsBoot)
 

@@ -61,6 +61,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                MetricsMaxRatioParams, MetricsSST4KMaxRatioParams,
                createPlotType,
                reglrCoef, penaltyCoef, numMetrics,
+               doSameSensColorbarLimits,
                beVerbose,
                useLongTitle, paramBoundsBoot):
     """
@@ -931,6 +932,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
            paramsAbbrv,
            downloadConfig,
            useLongTitle,
+           doSameSensColorbarLimits,
            plotWidth=500, boxSize=boxSize)
            #plotWidth=500, boxSize=20)
 
@@ -1381,6 +1383,7 @@ def createMapGallery(
     paramsAbbrv,
     downloadConfig,
     useLongTitle,
+    doSameSensColorbarLimits,
     plotWidth, boxSize):
     """Create a set of global maps for display on plotly dash."""
 
@@ -1591,6 +1594,21 @@ def createMapGallery(
                   style={'display': 'inline-block'}, config=downloadConfig)
     ]))
 
+    # find min and max values for all sensitivity plots
+    if doSameSensColorbarLimits:
+        minField = np.min(normlzdLinplusSensMatrixPoly[:, 0])
+        maxField = np.max(normlzdLinplusSensMatrixPoly[:, 0])
+        paramsIdx = 1
+        while paramsIdx < len(paramsAbbrv):
+            if np.min(normlzdLinplusSensMatrixPoly[:, paramsIdx]) < minField:
+                minField = np.min(normlzdLinplusSensMatrixPoly[:, paramsIdx])
+            if np.max(normlzdLinplusSensMatrixPoly[:, paramsIdx]) > maxField:
+                maxField = np.max(normlzdLinplusSensMatrixPoly[:, paramsIdx])
+            paramsIdx += 1
+    
+        minField = -np.maximum(np.abs(minField),np.abs(maxField))
+        maxField = np.maximum(np.abs(minField),np.abs(maxField))
+ 
     paramsIdx = 0
     while paramsIdx < len(paramsAbbrv):
         if useLongTitle:
@@ -1605,13 +1623,23 @@ def createMapGallery(
             panelLabel = '(c)'
         else:
             panelLabel = ''
-        leftFig = \
-            createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx],
-                           plotWidth=plotWidth,
-                           plotTitle=plotTitle,
-                           boxSize=boxSize,
-                           colorScale='RdBu_r',
-                           panelLabel=panelLabel)
+        if doSameSensColorbarLimits:
+            leftFig = \
+                createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx],
+                               plotWidth=plotWidth,
+                               plotTitle=plotTitle,
+                               boxSize=boxSize,
+                               colorScale='RdBu_r',
+                               panelLabel=panelLabel,
+                               minField=minField,maxField=maxField)
+        else:
+            leftFig = \
+                createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx],
+                               plotWidth=plotWidth,
+                               plotTitle=plotTitle,
+                               boxSize=boxSize,
+                               colorScale='RdBu_r',
+                               panelLabel=panelLabel)
         if paramsIdx + 1 < len(paramsAbbrv):
             if useLongTitle:
                 plotTitle = f"normlzdLinplusSensMatrixPoly[:,{paramsAbbrv[paramsIdx + 1]}]"
@@ -1625,13 +1653,23 @@ def createMapGallery(
                 panelLabel = '(c)'
             else:
                 panelLabel = ''
-            rightFig = \
-                createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx + 1],
-                               plotWidth=plotWidth,
-                               plotTitle=plotTitle,
-                               boxSize=boxSize,
-                               colorScale='RdBu_r',
-                               panelLabel=panelLabel)
+            if doSameSensColorbarLimits:
+                rightFig = \
+                    createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx + 1],
+                                   plotWidth=plotWidth,
+                                   plotTitle=plotTitle,
+                                   boxSize=boxSize,
+                                   colorScale='RdBu_r',
+                                   panelLabel=panelLabel,
+                                   minField=minField,maxField=maxField)
+            else:
+                rightFig = \
+                    createMapPanel(fieldToPlotCol=normlzdLinplusSensMatrixPoly[:, paramsIdx + 1],
+                                   plotWidth=plotWidth,
+                                   plotTitle=plotTitle,
+                                   boxSize=boxSize,
+                                   colorScale='RdBu_r',
+                                   panelLabel=panelLabel)
         else:
             rightFig = blankFig
 
