@@ -92,19 +92,19 @@ def main(args):
          reglrCoef, penaltyCoef, doBootstrapSampling,
          paramsNamesAndScales, allparamsNamesInFile,
          debug_level, recovery_test_dparam,
-         doSensParamBounds, doCustomParamBounds, customParamBounds,
+         doSensParamBounds, doCustomParamBounds, customParamBounds, 
          doWeightRegions, weightedRegionsDict,
          doRegularizeByRegError, doRegularizeByMetricError, doRegularizeByRestrictingParamVals,
          beVerbose) = \
             config_file.config_core()
 
         if doCustomParamBounds:
-            sys.exit("Error: PPE data is not currently configured to use doCustomParamBounds = True.")
+            sys.exit("Error: PPE data is not currently configured to use doCustomParamBounds = True.")    
 
         PPE_params = xr.open_dataset(PPE_params_filename,engine="netcdf4")
         PPE_metrics = xr.open_dataset(PPE_metrics_filename,engine="netcdf4")
 
-
+        
 
         metricsNames = read_PPE_files.get_metrics_names(varPrefixes, boxSize)
 
@@ -128,7 +128,7 @@ def main(args):
 
         else:
             new_ctrl_idx = None
-
+        
         if doRegularizeByRestrictingParamVals:
             PPE_params, PPE_metrics, min_loss = read_PPE_files.restrict_dataset_by_param(PPE_params, PPE_metrics, metricsNames, param_index=-1, lower_bound=100, min_loss=new_ctrl_idx)
 
@@ -137,13 +137,13 @@ def main(args):
         if doRegularizeByMetricError:
             PPE_params, PPE_metrics = read_PPE_files.restrict_dataset_by_metric_loss(PPE_params, PPE_metrics, varPrefixes, boxSize, 1)
 
+        
 
 
-
-
+        
         defaultParamValsOrigRow, PPE_params, paramsNames, paramsIndices, paramsScales, magParamValsRow, normlzdOrdDparamsMinFlat, normlzdOrdDparamsMaxFlat =\
             read_PPE_files.process_PPE_params_file(PPE_params, paramsNamesAndScales, allparamsNamesInFile)
-
+        
 
 
         
@@ -151,13 +151,13 @@ def main(args):
         defaultMetricValsCol, PPE_metrics, metricsNames, metricsWeights, obsMetricValsCol, obsWeightsCol =\
               read_PPE_files.process_ppe_metrics_file(PPE_metrics, varPrefixes, boxSize)
         
-
+        
         
         metricGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, len(varPrefixes), order='F').T,
                                       defaultMetricValsCol.reshape(-1, len(varPrefixes), order='F')))
+    
 
-
-
+        
 
         obsMetricValsDict, obsWeightsDict =\
               read_PPE_files.setUp_x_ObsMetricValsDictPPE(obsMetricValsCol, obsWeightsCol, metricsNames, varPrefixes)
@@ -169,7 +169,7 @@ def main(args):
                         obsMetricValsDict, obsWeightsDict)
         
         metricsNames = metricsNames.flatten()
-
+        
 
 
         normlzdOrdDparamsMin = np.tile(normlzdOrdDparamsMinFlat,(len(metricsNames),1))
@@ -177,8 +177,8 @@ def main(args):
 
         metricsNorms = np.copy(obsGlobalAvgCol)
         defaultBiasesCol = defaultMetricValsCol - obsMetricValsCol
-
-
+        
+        
 
         normMetricValsCol = np.copy(metricsNorms)
         for idx in np.arange(len(metricsNorms)):
@@ -230,7 +230,7 @@ def main(args):
         paramsNamesScalesAndFilenames, folder_name,
         prescribedParamsNamesScalesAndValues,
         metricsNamesWeightsAndNormsCustom, 
-        debug_level, recovery_test_dparam,
+        debug_level, recovery_test_dparam, 
         doSensParamBounds, doCustomParamBounds, customParamBounds,
         doWeightRegions, weightedRegionsDict, beVerbose) \
         = \
@@ -496,7 +496,7 @@ def main(args):
 
             assert normlzdSensMatrixPolySST4K.shape == normlzdSensMatrixPoly.shape, "normlzdSensMatrixPolySST4K and normlzdSensMatrixPoly should have the same shape"
             assert normlzdCurvMatrixSST4K.shape == normlzdCurvMatrix.shape, "normlzdCurvMatrixSST4K and normlzdCurvMatrix should have the same shape"
-
+                                
 
     #######################################################################################################
     #
@@ -1071,7 +1071,7 @@ def solveUsingNonlin(metricsNames,
     if doCustomParamBounds: #only works with doSensParamBounds = F
       lowerBoundsCol = normlzdDCustomBoundsMin[0,:]
       upperBoundsCol = normlzdDCustomBoundsMax[0,:]
-    elif doSensParamBounds: #don't let quadtune find solutions outside range spanned by default and sensitivity runs
+    elif doSensParamBounds: #don't let quadtune find solutions outside range spanned by default and sensitivity runs 
       lowerBoundsCol = normlzdOrdDparamsMin[0,:]
       upperBoundsCol = normlzdOrdDparamsMax[0,:]
     else: #no bounds on quadtune solutions
@@ -1811,7 +1811,7 @@ def getLowerAndUpperCustomParamBoundArrays(paramsNames, customParamBounds):
 
     lower = []
     upper = []
-
+    
     for p in paramsNames:
         if p in customParamBounds:
             lo, hi = customParamBounds[p]
@@ -1819,7 +1819,7 @@ def getLowerAndUpperCustomParamBoundArrays(paramsNames, customParamBounds):
             lo, hi = -999999999, 999999999
         lower.append(lo)
         upper.append(hi)
-
+    
     lower = np.array(lower)
     upper = np.array(upper)
 

@@ -1011,12 +1011,12 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
         normlzdDefaultBiasesColTemp = normlzdDefaultBiasesCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :]
         obsMetricValsColTemp = obsMetricValsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :]
         normMetricValsColTemp = normMetricValsCol[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :]
-
+        
         defaultMetricValsColTemp = (normlzdDefaultBiasesColTemp * np.abs(normMetricValsColTemp)) +obsMetricValsColTemp
 
         metricsWeightsTemp = metricsWeights[mapVarIdx * numBoxes:(mapVarIdx + 1) * numBoxes, :]
 
-
+    
         MetricsSensOnlyDenormalized = MetricsMaxRatioParams[0,0,:].reshape(-1,1) * np.abs(normMetricValsColTemp) + defaultMetricValsColTemp
         MetricsSST4KSensOnlyDenormalized = MetricsSST4KMaxRatioParams[0,0,:].reshape(-1,1) * np.abs(normMetricValsColTemp) + defaultMetricValsColTemp
 
@@ -1134,7 +1134,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                 minField=np.min(curvature_data),
                 maxField=np.max(curvature_data)
             )
-
+            
 
 
 
@@ -1208,12 +1208,12 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
         html.H1(children='QuadTune diagnostics'),
 
         html.Div(children=''' ''')]
+    
 
 
 
 
-
-    if createPlotType["SST4KPanelGallery"]:
+    if createPlotType["SST4KPanelGallery"]: 
 
         dashboardChildren.append(html.H2(children="Lin and NonLin maps for Ratio-maximizing parameters", style={'text-indent': '450px'}))
 
@@ -1242,7 +1242,7 @@ def createFigs(numMetricsNoSpecial, metricsNames, metricsNamesNoprefix,
                               for i, fig in enumerate(SensitivityPanels)])
         second_col = html.Div([dcc.Graph(id=f"pure_curvature_panel_{i}", figure=fig, config=downloadConfig)
                               for i, fig in enumerate(CurvaturePanels)])
-
+        
         dashboardChildren.append(html.Div([first_col,second_col], style={'display': 'flex'}))
 
     #dashboardChildren.append(dcc.Graph(id='PcMapFig', figure=PcMapFig))
@@ -1449,20 +1449,20 @@ def createMapGallery(
 
     #Denormalize and decenter the default-model bias in order to  recover the default-model solution
     defaultMetricValsCol = (normlzdDefaultBiasesCol * np.abs(normMetricValsCol)) +obsMetricValsCol
-
+    
     #Compute the weighted global average of the default metric values
     metricGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, 1, order='F').T,
                                       defaultMetricValsCol.reshape(-1, 1, order='F')))
-
+    
     #Compute the weighted global average of the observed metric values
     obsGlobalAvg = np.diag(np.dot(obsWeightsCol.reshape(-1,1,order='F').T, obsMetricValsCol.reshape(-1,1,order='F')))
-
+    
     #normlzdResid is not a column vector, so it has to be reshaped such that resid is a column vector and can be used in future computations.
     resid = (-normlzdResid.reshape(-1,1) * np.abs(normMetricValsCol))
     quadtunedMetricsCol = resid + obsMetricValsCol
 
     quadtuneMetricsGlobalAvgs = np.diag(np.dot(metricsWeights.reshape(-1, 1, order='F').T,
-                                      (resid + obsGlobalAvg).reshape(-1, 1, order='F')))
+                                      (resid + obsGlobalAvg).reshape(-1, 1, order='F'))) 
 
     minFieldVals = np.minimum.reduce([ np.min(defaultMetricValsCol),
                                         np.min(quadtunedMetricsCol),
@@ -1480,7 +1480,7 @@ def createMapGallery(
                        maxField=maxFieldVals,
                        panelLabel='')
 
-
+    
 
     PcMapPanelQuadTune = \
         createMapPanel(fieldToPlotCol=quadtunedMetricsCol,
@@ -1491,7 +1491,7 @@ def createMapGallery(
                        minField=minFieldVals,
                        maxField=maxFieldVals,
                        panelLabel='')
-
+    
     BiasParamsDashboardChildren.append(html.Div(children=[
         dcc.Graph(figure=PcMapPanelDefault,
                   style={'display': 'inline-block'}, config=downloadConfig),
@@ -1512,7 +1512,7 @@ def createMapGallery(
                        minField=minFieldBias,
                        maxField=maxFieldBias,
                        panelLabel='')
-
+    
     PcMapPanelObs = \
         createMapPanel(fieldToPlotCol=obsMetricValsCol,
                        plotWidth=plotWidth,
