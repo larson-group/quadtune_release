@@ -18,7 +18,7 @@ project_root = Path(__file__).resolve().parents[1]
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from optimization import (calc_all_A_opt_metrics, evaluate_model, get_H_at_dp, evaluate_ratio, calc_A_opt_metrics, calc_E_RR)
+from optimization import (calc_all_A_opt_metrics, evaluate_Quadtune_model, get_H_at_dp, evaluate_Quadtune_ratio, calc_A_opt_metrics, calc_E_RR)
 
 
 
@@ -150,8 +150,8 @@ def create_map_plots(all_optimizations: dict[str, dict[str,np.ndarray]], fields_
     global_base_min = np.inf
     global_base_max = -np.inf
     for p_set in all_param_sets:
-        pd_eval = evaluate_model(p_set, *base_PD_matrices) * np.abs(global_averages_obs[base_field_idx])
-        f_eval = evaluate_model(p_set, *base_F_matrices) * np.abs(global_averages_obs[base_field_idx])
+        pd_eval = evaluate_Quadtune_model(p_set, *base_PD_matrices) * np.abs(global_averages_obs[base_field_idx])
+        f_eval = evaluate_Quadtune_model(p_set, *base_F_matrices) * np.abs(global_averages_obs[base_field_idx])
         global_base_min = min(global_base_min, np.min(pd_eval), np.min(f_eval))
         global_base_max = max(global_base_max, np.max(pd_eval), np.max(f_eval))
 
@@ -178,8 +178,8 @@ def create_map_plots(all_optimizations: dict[str, dict[str,np.ndarray]], fields_
             global_constr_min = np.inf
             global_constr_max = -np.inf
             for p_set in all_param_sets:
-                pd_eval = evaluate_model(p_set, *constr_PD_matrices) * np.abs(global_averages_obs[fields_idxs[idx]])
-                f_eval = evaluate_model(p_set, *constr_F_matrices) * np.abs(global_averages_obs[fields_idxs[idx]])
+                pd_eval = evaluate_Quadtune_model(p_set, *constr_PD_matrices) * np.abs(global_averages_obs[fields_idxs[idx]])
+                f_eval = evaluate_Quadtune_model(p_set, *constr_F_matrices) * np.abs(global_averages_obs[fields_idxs[idx]])
                 global_constr_min = min(global_constr_min, np.min(pd_eval), np.min(f_eval))
                 global_constr_max = max(global_constr_max, np.max(pd_eval), np.max(f_eval))
 
@@ -187,8 +187,8 @@ def create_map_plots(all_optimizations: dict[str, dict[str,np.ndarray]], fields_
 
                 if set_idx == 0:
                     base_plot_done = True
-                normalized_base_PD_plot_data = evaluate_model(parameter_set, *base_PD_matrices)
-                normalized_base_F_plot_data = evaluate_model(parameter_set, *base_F_matrices)
+                normalized_base_PD_plot_data = evaluate_Quadtune_model(parameter_set, *base_PD_matrices)
+                normalized_base_F_plot_data = evaluate_Quadtune_model(parameter_set, *base_F_matrices)
 
 
 
@@ -206,8 +206,8 @@ def create_map_plots(all_optimizations: dict[str, dict[str,np.ndarray]], fields_
             
              
 
-            normalized_constr_PD_plot_data = evaluate_model(parameter_set, *constr_PD_matrices)
-            normalized_constr_F_plot_data = evaluate_model(parameter_set, *constr_F_matrices)
+            normalized_constr_PD_plot_data = evaluate_Quadtune_model(parameter_set, *constr_PD_matrices)
+            normalized_constr_F_plot_data = evaluate_Quadtune_model(parameter_set, *constr_F_matrices)
 
             diff_constr_PD_plot_data = normalized_constr_PD_plot_data*np.abs(global_averages_obs[fields_idxs[idx]])
             diff_constr_F_plot_data = normalized_constr_F_plot_data*np.abs(global_averages_obs[fields_idxs[idx]])
@@ -290,11 +290,11 @@ def make_scatterplot(results, base_var_name, PD_base_SensMatrix, PD_base_CurvMat
     combined_PD_CurvMatrix =  np.vstack((PD_base_CurvMatrix,PD_constr_CurvMatrix))
 
     if constrained_opt:
-        R_F_B_fun = lambda dp: np.sum(evaluate_model(dp, Future_SensMatrix, Future_CurvMatrix)**2)
-        R_F_BC_fun = lambda dp: evaluate_ratio(dp, Future_SensMatrix, Future_CurvMatrix, PD_constr_SensMatrix, PD_constr_CurvMatrix, eps=1)
+        R_F_B_fun = lambda dp: np.sum(evaluate_Quadtune_model(dp, Future_SensMatrix, Future_CurvMatrix)**2)
+        R_F_BC_fun = lambda dp: evaluate_Quadtune_ratio(dp, Future_SensMatrix, Future_CurvMatrix, PD_constr_SensMatrix, PD_constr_CurvMatrix, eps=1)
     else:
-        R_F_B_fun = lambda dp: evaluate_ratio(dp,Future_SensMatrix, Future_CurvMatrix,PD_base_SensMatrix, PD_base_CurvMatrix)
-        R_F_BC_fun = lambda dp: evaluate_ratio(dp,Future_SensMatrix, Future_CurvMatrix,combined_PD_SensMatrix, combined_PD_CurvMatrix)
+        R_F_B_fun = lambda dp: evaluate_Quadtune_ratio(dp,Future_SensMatrix, Future_CurvMatrix,PD_base_SensMatrix, PD_base_CurvMatrix)
+        R_F_BC_fun = lambda dp: evaluate_Quadtune_ratio(dp,Future_SensMatrix, Future_CurvMatrix,combined_PD_SensMatrix, combined_PD_CurvMatrix)
 
    
 

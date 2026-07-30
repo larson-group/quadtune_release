@@ -4,10 +4,16 @@ https://essopenarchive.org/doi/full/10.22541/essoar.15004390/v1
 Runs multiple constrained optimizations and additional diagnostics (e.g. the expected average ratio of ratios).
 """
 
-
 from concurrent.futures import ProcessPoolExecutor
 
-from optimization import calc_all_A_opt_metrics, calc_all_E_RR, optimize_all, normalize_params, denormalize_params
+from optimization import (
+    calc_all_A_opt_metrics,
+    calc_all_E_RR,
+    evaluate_Quadtune_model,
+    optimize_all,
+    normalize_params,
+    denormalize_params,
+)
 
 from data_io import (
     get_metrics_names,
@@ -156,7 +162,7 @@ PARAM_IDX_TO_BARPLOT = 1
 
 # Index of parameterset to linearize about
 # e.g. for LWCF: 0 -> R_F_S, 1-> R_F_SL, 2-> R_LS
-PARAM_IDX_TO_LINEARIZE = 2 
+PARAM_IDX_TO_LINEARIZE = 2
 
 # Fields that should be considered in the following computations
 USED_FIELDS = ALL_FIELDS
@@ -167,7 +173,7 @@ COLORS = ["red", "blue", "green"]
 NUM_PARAMS_TO_MAP_PLOT = 2
 
 
-def main(argv = None):
+def main(argv=None):
     """
     Check if everything is correctly defined
     """
@@ -329,6 +335,7 @@ def main(argv = None):
 
     optimizer_bounds = list(zip(normlzd_low_params, normlzd_high_params))
 
+
     """
     Optimize ratios
     """
@@ -338,11 +345,34 @@ def main(argv = None):
         if current_field == BASE_FIELD:
             continue
 
+        PD_base_model = lambda dp: evaluate_Quadtune_model(
+            dp, *all_fields_data[BASE_FIELD][:2]
+        )
+        F_base_model = lambda dp: evaluate_Quadtune_model(
+            dp, *all_fields_data[BASE_FIELD][2:]
+        )
+        PD_constr_model = lambda dp: evaluate_Quadtune_model(
+            dp, *all_fields_data[current_field][:2]
+        )
+
+        combined_PD_SensMatrix = np.vstack(
+            (all_fields_data[BASE_FIELD][0], all_fields_data[current_field][0])
+        )
+        combined_PD_CurvMatrix = np.vstack(
+            (all_fields_data[BASE_FIELD][1], all_fields_data[current_field][1])
+        )
+
+        PD_combined_model = lambda dp: evaluate_Quadtune_model(
+            dp, combined_PD_SensMatrix, combined_PD_CurvMatrix
+        )
+
         all_optimizations[current_field] = optimize_all(
             BASE_FIELD,
-            *all_fields_data[BASE_FIELD],
             current_field,
-            *all_fields_data[current_field],
+            PD_base_model,
+            F_base_model,
+            PD_constr_model,
+            PD_combined_model,
             optimizer_bounds,
             eps=EPS,
             run_exact_constraint=CONSTR_OPT,
@@ -353,18 +383,29 @@ def main(argv = None):
     """
     if args.testing:
         flattened_results_dict = flatten_results(all_optimizations)
-        R_scales, E_RLS, R_shapes, _ = calc_all_A_opt_metrics(all_optimizations,USED_FIELDS, BASE_FIELD, all_fields_data, PARAM_IDX_TO_LINEARIZE)
+        R_scales, E_RLS, R_shapes, _ = calc_all_A_opt_metrics(
+            all_optimizations,
+            USED_FIELDS,
+            BASE_FIELD,
+            all_fields_data,
+            PARAM_IDX_TO_LINEARIZE,
+        )
         flattened_results_dict["R_scales"] = np.array(R_scales)
         flattened_results_dict["E_RLS"] = np.array(E_RLS)
         flattened_results_dict["R_shapes"] = np.array(R_shapes)
 
-        #E_RR is defined as an expected ratio of variance ratios as described in Nobre-Wittwer et al. (2026)
-        E_RR = calc_all_E_RR(all_optimizations,USED_FIELDS, BASE_FIELD, all_fields_data, PARAM_IDX_TO_LINEARIZE)
+        # E_RR is defined as an expected ratio of variance ratios as described in Nobre-Wittwer et al. (2026)
+        E_RR = calc_all_E_RR(
+            all_optimizations,
+            USED_FIELDS,
+            BASE_FIELD,
+            all_fields_data,
+            PARAM_IDX_TO_LINEARIZE,
+        )
 
         flattened_results_dict["E_RR"] = np.array(E_RR)
 
         return flattened_results_dict
-    
 
     """
     Create cartoon scatter
@@ -382,7 +423,12 @@ def main(argv = None):
 
     print("Creating scale vs shape plot")
     scale_shape_ax = create_shape_vs_scale_plot(
-        all_optimizations, BASE_FIELD, USED_FIELDS, all_fields_data, colors=COLORS,paramset_idx_to_plot=PARAM_IDX_TO_LINEARIZE
+        all_optimizations,
+        BASE_FIELD,
+        USED_FIELDS,
+        all_fields_data,
+        colors=COLORS,
+        paramset_idx_to_plot=PARAM_IDX_TO_LINEARIZE,
     )
     scale_shape_fig = scale_shape_ax.get_figure()
     scale_shape_fig.savefig(
@@ -514,6 +560,7 @@ def main(argv = None):
             dpi=300,
         )
 
+
 def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(argv)
 
@@ -589,11 +636,12 @@ def parse_arguments(argv=None):
         action="store_true",
         default=False,
         required=False,
-        help="Only run the optimizations and return the results for automatic testing"
+        help="Only run the optimizations and return the results for automatic testing",
     )
 
     args = parser.parse_args(argv)
     return args
+
 
 if __name__ == "__main__":
     main()

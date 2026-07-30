@@ -1,3 +1,4 @@
+from tracemalloc import start
 import warnings
 
 import numpy as np
@@ -7,96 +8,30 @@ from scipy.optimize import basinhopping
 """
 All functions needed for the optimization of the different ratios
 """
-
-
 def maximize_ratio(
-    numerator_SensMatrix,
-    numerator_CurvMatrix,
-    denominator_SensMatrix,
-    denominator_CurvMatrix,
+    numerator_model,
+    denominator_model,
     bounds,
     eps=1e-4,
     starting_pos=None,
     seed=None,
-    use_grad=True,
-    reg_gamma=0,
 ):
-    """
-    Maximizes the ratio of two Quadtune models using the Basin-Hopping algorithm.
-
-    Parameters
-    ----------
-    numerator_SensMatrix, numerator_CurvMatrix : numpy.ndarray
-        2D matrices defining the sensitivity and curvature of the target field to maximize.
-    denominator_SensMatrix, denominator_CurvMatrix : numpy.ndarray
-        2D matrices defining the sensitivity and curvature of the constraint field.
-    bounds : sequence of tuples
-        (min, max) bounds for the parameter space.
-    eps : float, optional
-        Numerical stability constant (default is 1e-4).
-    starting_pos : numpy.ndarray, optional
-        Initial guess for the parameter vector (default is zeros).
-    seed : int, optional
-        Random seed (default is None).
-    use_grad : bool, optional
-        If True, uses the analytical gradient function via SLSQP (default is True).
-    reg_gamma : float, optional
-        L2 regularization factor (default is 0).
-
-    Returns
-    -------
-    tuple
-        - x (numpy.ndarray): The optimized parameter vector.
-        - fun (float): The maximized ratio value.
-    """
-
-    if starting_pos is None:
-        starting_pos = np.zeros(numerator_SensMatrix.shape[1])
-
+    
     def ratio_fun(dp):
-        return -evaluate_ratio(
-            dp,
-            numerator_SensMatrix,
-            numerator_CurvMatrix,
-            denominator_SensMatrix,
-            denominator_CurvMatrix,
-            eps=eps,
-            reg_gamma=reg_gamma,
-        )
+        return -numerator_model(dp)/denominator_model(dp)
+    
+    if starting_pos is None:
+        starting_pos =  np.zeros(len(bounds))
 
-    def jac_fun(dp):
-        return -evaluate_grad(
-            dp,
-            numerator_SensMatrix,
-            numerator_CurvMatrix,
-            denominator_SensMatrix,
-            denominator_CurvMatrix,
-            eps=eps,
-        )
-
-    with warnings.catch_warnings():
-        # Catch SLSQP clipping to bounds warning to clean up the output
-        warnings.filterwarnings("ignore", message="Values in x were outside bounds")
-
-    if use_grad:
-        result = basinhopping(
+    result = basinhopping(
             ratio_fun,
             starting_pos,
             niter=1000,
             rng=seed,
-            minimizer_kwargs={"method": "SLSQP", "bounds": bounds, "jac": jac_fun},
-        )
-    else:
-        result = basinhopping(
-            ratio_fun,
-            starting_pos,
-            niter=1000,
-            rng=seed,
-            minimizer_kwargs={"method": "SLSQP", "bounds": bounds},
-        )
-
+            minimizer_kwargs={"method": "SLSQP", "bounds": bounds})
+    
     return result.x, -result.fun
-
+    
 
 def evaluate_grad(
     dp,
@@ -126,8 +61,8 @@ def evaluate_grad(
         1D gradient vector.
     """
 
-    v_num = evaluate_model(dp, numerator_SensMatrix, numerator_CurvMatrix)
-    v_den = evaluate_model(dp, denominator_SensMatrix, denominator_CurvMatrix)
+    v_num = evaluate_Quadtune_model(dp, numerator_SensMatrix, numerator_CurvMatrix)
+    v_den = evaluate_Quadtune_model(dp, denominator_SensMatrix, denominator_CurvMatrix)
 
     num_val = np.sum(v_num**2)
     den_val = np.sum(v_den**2) + eps
@@ -137,79 +72,40 @@ def evaluate_grad(
 
     return (grad_num * den_val - num_val * grad_den) / (den_val**2)
 
-
 def maximize_constr_problem(
-    base_SensMatrix,
-    base_CurvMatrix,
-    numerator_SensMatrix,
-    numerator_CurvMatrix,
+    base_model,
+    numerator_model,
     constr_value,
-    denominator_SensMatrix=None,
-    denominator_CurvMatrix=None,
+    denominator_model = None,
     bounds=None,
     eps=1e-4,
     starting_pos=None,
     seed=None,
-    use_grad=True,
-    reg_gamma=0,
 ):
     """
     Maximizes either the numerator model OR the ratio of (numerator / denominator),
     subject to the base model's sum of squares being exactly constrained to `constr_value`.
     """
     if starting_pos is None:
-        starting_pos = np.zeros(numerator_SensMatrix.shape[1])
+        starting_pos = np.zeros(len(bounds))
 
-    is_ratio = denominator_SensMatrix is not None
 
     def objective_fun(dp):
-        if is_ratio:
-            return -evaluate_ratio(
-                dp,
-                numerator_SensMatrix,
-                numerator_CurvMatrix,
-                denominator_SensMatrix,
-                denominator_CurvMatrix,
-                eps=constr_value + eps,
-                reg_gamma=reg_gamma,
-            )
+        if denominator_model is not None:
+            return -np.sum(numerator_model(dp)**2)/(np.sum(denominator_model(dp)**2)+constr_value+eps)
         else:
-            v_num = evaluate_model(dp, numerator_SensMatrix, numerator_CurvMatrix)
-            return -np.sum(v_num**2)
-
-    def jac_fun(dp):
-        if is_ratio:
-            return -evaluate_grad(
-                dp,
-                numerator_SensMatrix,
-                numerator_CurvMatrix,
-                denominator_SensMatrix,
-                denominator_CurvMatrix,
-                eps=constr_value + eps,
-            )
-        else:
-            v_num = evaluate_model(dp, numerator_SensMatrix, numerator_CurvMatrix)
-            grad_num = 2 * (numerator_SensMatrix + numerator_CurvMatrix * dp).T @ v_num
-            return -grad_num
+            return -np.sum(numerator_model(dp)**2)
 
     def constraint_fun(dp):
-        base_val = np.sum(evaluate_model(dp, base_SensMatrix, base_CurvMatrix) ** 2)
+        base_val = np.sum(base_model(dp)**2)
         return constr_value - base_val
 
-    def constraint_jac(dp):
-        v_base = evaluate_model(dp, base_SensMatrix, base_CurvMatrix)
-        return -2 * (base_SensMatrix + base_CurvMatrix * dp).T @ v_base
-
     constraints = [{"type": "ineq", "fun": constraint_fun}]
-    if use_grad:
-        constraints[0]["jac"] = constraint_jac
 
     minimizer_kwargs = {"method": "SLSQP", "constraints": constraints}
 
     if bounds is not None:
         minimizer_kwargs["bounds"] = bounds
-    if use_grad:
-        minimizer_kwargs["jac"] = jac_fun
 
     result = basinhopping(
         objective_fun,
@@ -222,7 +118,8 @@ def maximize_constr_problem(
     return result.x, -result.fun
 
 
-def evaluate_ratio(
+
+def evaluate_Quadtune_ratio(
     dp,
     numerator_SensMatrix,
     numerator_CurvMatrix,
@@ -253,15 +150,15 @@ def evaluate_ratio(
         The calculated ratio.
     """
     numerator = np.sum(
-        evaluate_model(dp, numerator_SensMatrix, numerator_CurvMatrix) ** 2
+        evaluate_Quadtune_model(dp, numerator_SensMatrix, numerator_CurvMatrix) ** 2
     )
     denominator = np.sum(
-        (evaluate_model(dp, denominator_SensMatrix, denominator_CurvMatrix)) ** 2
+        (evaluate_Quadtune_model(dp, denominator_SensMatrix, denominator_CurvMatrix)) ** 2
     ) + reg_gamma * np.sum(dp**2)
     return numerator / (denominator + eps)
 
 
-def evaluate_model(dp, SensMatrix, CurvMatrix):
+def evaluate_Quadtune_model(dp, SensMatrix, CurvMatrix):
     """
     Evaluates a Quadtune model at a specific dp.
 
@@ -281,53 +178,41 @@ def evaluate_model(dp, SensMatrix, CurvMatrix):
     """
     return SensMatrix @ dp + 0.5 * CurvMatrix @ dp**2
 
-
 def optimize_all(
-    base_var_name,
-    PD_base_SensMatrix,
-    PD_base_CurvMatrix,
-    F_base_SensMatrix,
-    F_base_CurvMatrix,
-    constr_var_name,
-    PD_constr_SensMatrix,
-    PD_constr_CurvMatrix,
-    F_constr_SensMatrix,
-    F_constr_CurvMatrix,
-    normlzd_param_bounds,
-    combined_future=False,
-    eps=1e-4,
-    use_grad=True,
-    reg_gamma=0,
-    seed=None,
-    run_exact_constraint=False,
-    exact_constr_value=None,
+        base_var_name,
+        constr_var_name,
+        PD_base_model,
+        F_base_model,
+        PD_constr_model,
+        PD_combined_model,
+        normlzd_param_bounds,
+        eps=1e-4,
+        seed=None,
+        run_exact_constraint=False,
+        exact_constr_value=None,
+
 ):
+
     """
     Run optimizations for the four different scenario with a base field and a constraining field (e.g., F_S, F_SL, max L_S, min L_S)
     Parameters
     ----------
     base_var_name : str
         Identifier for the primary target field.
-    PD_base_SensMatrix, PD_base_CurvMatrix : numpy.ndarray
-        Baseline sensitivity (Jacobian) and curvature (Hessian) matrices for the primary field.
-    F_base_SensMatrix, F_base_CurvMatrix : numpy.ndarray
-        Future sensitivity and curvature matrices for the primary field.
     constr_var_name : str
         Identifier for the secondary constraint field.
-    PD_constr_SensMatrix, PD_constr_CurvMatrix : numpy.ndarray
-        Baseline sensitivity and curvature matrices for the constraint field.
-    F_constr_SensMatrix, F_constr_CurvMatrix : numpy.ndarray
-        Future sensitivity and curvature matrices for the constraint field.
+    PD_base_model : callable
+        Function to evaluate the present-day model for the base field.
+    F_base_model : callable
+        Function to evaluate the future model for the base field.
+    PD_constr_model : callable
+        Function to evaluate the present-day model for the constraint field.
+    PD_combined_model : callable
+        Function to evaluate the present-day model for the combined base and constraint fields.
     normlzd_param_bounds : sequence of tuples
-        Optimization bounds for each normalized parameter in the target space.
-    combined_future : bool, optional
-        If True, stacks the projected base and constraint matrices into a joint target (default is False).
+        (min, max) bounds for the normalized parameter space.
     eps : float, optional
         Numerical stability constant (default is 1e-4).
-    use_grad : bool, optional
-        If True, utilizes analytical gradients for the optimization (default is True).
-    reg_gamma : float, optional
-        L2 regularization penalty weight applied to the objective function (default is 0).
     seed : int, optional
         Random seed for the stochastic global optimizer.
 
@@ -338,17 +223,6 @@ def optimize_all(
         vector and the maximized objective value.
     """
 
-    if combined_future:
-        Future_SensMatrix = np.vstack((F_base_SensMatrix, F_constr_SensMatrix))
-        Future_CurvMatrix = np.vstack((F_base_CurvMatrix, F_constr_CurvMatrix))
-        future_var_name = base_var_name + constr_var_name
-    else:
-        Future_SensMatrix = F_base_SensMatrix
-        Future_CurvMatrix = F_base_CurvMatrix
-        future_var_name = base_var_name
-
-    combined_PD_SensMatrix = np.vstack((PD_base_SensMatrix, PD_constr_SensMatrix))
-    combined_PD_CurvMatrix = np.vstack((PD_base_CurvMatrix, PD_constr_CurvMatrix))
 
     if constr_var_name == "TMQ":
         short_constr_name = "Q"
@@ -365,125 +239,49 @@ def optimize_all(
     if run_exact_constraint:
 
         print(
-            f"Maximizing {future_var_name} future with {base_var_name} constrained to {exact_constr_value}"
+            f"Maximizing {base_var_name} future with {base_var_name} constrained to {exact_constr_value}"
         )
-        results[f"res_max_F_{short_base_name}"] = maximize_constr_problem(
-            base_SensMatrix=PD_base_SensMatrix,
-            base_CurvMatrix=PD_base_CurvMatrix,
-            numerator_SensMatrix=Future_SensMatrix,
-            numerator_CurvMatrix=Future_CurvMatrix,
-            constr_value=exact_constr_value,
-            denominator_SensMatrix=None,
-            denominator_CurvMatrix=None,
-            bounds=normlzd_param_bounds,
-            eps=eps,
-            use_grad=use_grad,
-            reg_gamma=reg_gamma,
-            seed=seed,
-        )
+        results[f"res_max_F_{short_base_name}"] = maximize_constr_problem(PD_base_model, F_base_model, constr_value=exact_constr_value, denominator_model=None, bounds=normlzd_param_bounds, eps=eps, seed=seed)
 
         print(
-            f"Maximizing ratio ({future_var_name} / {constr_var_name}) with {base_var_name} constrained to {exact_constr_value}"
+            f"Maximizing ratio ({base_var_name} / {constr_var_name}) with {base_var_name} constrained to {exact_constr_value}"
         )
-        results[f"res_max_F_{short_base_name}{short_constr_name}"] = (
-            maximize_constr_problem(
-                base_SensMatrix=PD_base_SensMatrix,
-                base_CurvMatrix=PD_base_CurvMatrix,
-                numerator_SensMatrix=Future_SensMatrix,
-                numerator_CurvMatrix=Future_CurvMatrix,
-                constr_value=exact_constr_value,
-                denominator_SensMatrix=PD_constr_SensMatrix,
-                denominator_CurvMatrix=PD_constr_CurvMatrix,
-                bounds=normlzd_param_bounds,
-                eps=eps,
-                use_grad=use_grad,
-                reg_gamma=reg_gamma,
-                seed=seed,
-            )
-        )
+        results[f"res_max_F_{short_base_name}{short_constr_name}"] = maximize_constr_problem(PD_base_model, F_base_model, constr_value=exact_constr_value, denominator_model=PD_constr_model, bounds=normlzd_param_bounds, eps=eps, seed=seed)
 
         print(
             f"Maximizing {constr_var_name} present-day with {base_var_name} constrained to {exact_constr_value}"
         )
-        results[f"res_max_{short_constr_name}_{short_base_name}"] = (
-            maximize_constr_problem(
-                base_SensMatrix=PD_base_SensMatrix,
-                base_CurvMatrix=PD_base_CurvMatrix,
-                numerator_SensMatrix=PD_constr_SensMatrix,
-                numerator_CurvMatrix=PD_constr_CurvMatrix,
-                constr_value=exact_constr_value,
-                denominator_SensMatrix=None,
-                denominator_CurvMatrix=None,
-                bounds=normlzd_param_bounds,
-                eps=eps,
-                use_grad=use_grad,
-                reg_gamma=reg_gamma,
-                seed=seed,
-            )
-        )
+        results[f"res_max_{short_constr_name}_{short_base_name}"] = maximize_constr_problem(PD_base_model, PD_constr_model, constr_value=exact_constr_value, denominator_model=None, bounds=normlzd_param_bounds, eps=eps, seed=seed)
+
     else:
 
+
         # optimize for future over base
-        print(f"Maximizing {future_var_name} future over {base_var_name} present-day ")
-        results[f"res_max_F_{short_base_name}"] = maximize_ratio(
-            numerator_SensMatrix=Future_SensMatrix,
-            numerator_CurvMatrix=Future_CurvMatrix,
-            denominator_SensMatrix=PD_base_SensMatrix,
-            denominator_CurvMatrix=PD_base_CurvMatrix,
-            bounds=normlzd_param_bounds,
-            eps=eps,
-            use_grad=use_grad,
-            reg_gamma=reg_gamma,
-            seed=seed,
-        )
+        
+        print(f"Maximizing {base_var_name} future over {base_var_name} present-day ")
+        results[f"res_max_F_{short_base_name}"] = maximize_ratio(F_base_model,PD_constr_model, bounds=normlzd_param_bounds,eps=eps)
+
 
         # optimize for future over restricted base
+        
         print(
-            f"Maximizing {future_var_name} future over {base_var_name} and {constr_var_name} present-day "
+            f"Maximizing {base_var_name} future over {base_var_name} and {constr_var_name} present-day "
         )
-        results[f"res_max_F_{short_base_name}{short_constr_name}"] = maximize_ratio(
-            numerator_SensMatrix=Future_SensMatrix,
-            numerator_CurvMatrix=Future_CurvMatrix,
-            denominator_SensMatrix=combined_PD_SensMatrix,
-            denominator_CurvMatrix=combined_PD_CurvMatrix,
-            bounds=normlzd_param_bounds,
-            eps=eps,
-            use_grad=use_grad,
-            reg_gamma=reg_gamma,
-            seed=seed,
-        )
+        results[f"res_max_F_{short_base_name}{short_constr_name}"] = maximize_ratio(F_base_model,PD_combined_model, bounds=normlzd_param_bounds,eps=eps)
 
         # optimize for constraint over base
+
         print(
             f"Maximizing present-day {constr_var_name} over present-day {base_var_name}"
         )
-        results[f"res_max_{short_constr_name}_{short_base_name}"] = maximize_ratio(
-            numerator_SensMatrix=PD_constr_SensMatrix,
-            numerator_CurvMatrix=PD_constr_CurvMatrix,
-            denominator_SensMatrix=PD_base_SensMatrix,
-            denominator_CurvMatrix=PD_base_CurvMatrix,
-            bounds=normlzd_param_bounds,
-            eps=eps,
-            use_grad=use_grad,
-            reg_gamma=reg_gamma,
-            seed=seed,
-        )
+        results[f"res_max_{short_constr_name}_{short_base_name}"] = maximize_ratio(F_base_model,PD_constr_model, bounds=normlzd_param_bounds,eps=eps)
+
 
         # optimize for base over constraint
         print(
             f"Minimizing present-day {constr_var_name} over present-day {base_var_name}"
         )
-        temp_res = maximize_ratio(
-            numerator_SensMatrix=PD_base_SensMatrix,
-            numerator_CurvMatrix=PD_base_CurvMatrix,
-            denominator_SensMatrix=PD_constr_SensMatrix,
-            denominator_CurvMatrix=PD_constr_CurvMatrix,
-            bounds=normlzd_param_bounds,
-            eps=eps,
-            use_grad=use_grad,
-            reg_gamma=reg_gamma,
-            seed=seed,
-        )
+        temp_res = maximize_ratio(F_base_model,PD_constr_model, bounds=normlzd_param_bounds,eps=eps)
 
         results[f"res_min_{short_constr_name}_{short_base_name}"] = (
             temp_res[0],
@@ -650,8 +448,6 @@ def calc_all_A_opt_metrics(all_optimizations,used_fields, base_field, all_fields
         ConstrSensMatrix, ConstrCurvMatrix = all_fields_data[field][:2]
         H_Base = get_H_at_dp(BaseSensMatrix, BaseCurvMatrix, constrained_parameter_set)
         H_Constr = get_H_at_dp(ConstrSensMatrix, ConstrCurvMatrix, constrained_parameter_set)
-
-
         R_scale, E_RLS, R_shape, A_opt_over_n = calc_A_opt_metrics(H_Base, H_Constr)
         
 
