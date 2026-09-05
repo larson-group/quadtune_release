@@ -1,0 +1,115 @@
+commit 3eb3259ddc5e5f0ecdb5d15a885b0b28363db9ad
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Fri Jul 10 10:24:46 2026 +0200
+
+    Max ratio test (#41)
+    
+    * Test if the max ratio results have changed
+    
+    * Added comments to the test and included more metrics which should be tested
+    
+    * Changed test to only include one dict for better readability of the test output
+    
+    * Added the new test into the github actions workflow
+    
+    * Renamed variables and added comments according to the review
+    
+    ---------
+    
+    Co-authored-by: nn6273s <nn6273s@alumni.fh-aachen.de>
+
+commit 6ac8ef0d09050de4d39aa1ec8287698c2ac78290
+Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
+Date:   Thu Jul 9 15:49:56 2026 -0600
+
+    Proposed fix to bootstrap bug issue. (#43)
+    
+    * Proposed fix to bootstrap bug issue.
+    
+    * Adding comments
+
+commit 656570d26d377ebff22dd65a2897c09ca4836f50
+Author: Benjamin A. Stephens <59519056+bstephens82@users.noreply.github.com>
+Date:   Tue Jul 7 13:39:19 2026 -0600
+
+    Adding capability to customize parameter ranges. (#40)
+    
+    With this new capability, the user can choose a custom range for each tunable parameter, instead of having to use an unlimited range or the range determined by the sensitivity runs.
+
+commit 09a4945e9b0183f2ef8524ac3a7429e5652f38b8
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Tue Jul 7 07:03:29 2026 -0500
+
+    Add space to test whether GitHub actions run in the quadtune_release repo when all we do there is update the version file
+
+commit 741ec77736f16553c1fde5d7c54a4ded86ee70cf
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Tue Jul 7 07:00:15 2026 -0500
+
+    Refrain from performing GitHub actions when the only file modified is version_quadtune.txt
+    
+    I had implemented this block earlier in the quadtune_release repo
+    
+    https://github.com/larson-group/quadtune_release/commit/0c8a21af7d78155dead7ecf10b8307541f0a0c03
+    
+    but it got overwritten when the quadtune repo was copied over to quadtune_release.  So now I've implemented it in the quadtune repo.  I'm hoping it will do nothing in the quadtune repo, because that repo doesn't have a version file.  But it should prevent GitHub actions from running when all the quadtune_release repo is doing is updating the version file.
+
+commit 8720a99d737d4896d8a4f4929b148e59af3bd90e
+Author: Trevor-Hancock5 <hancoct@uwm.edu>
+Date:   Mon Jul 6 16:15:35 2026 -0500
+
+    Add space to test git update scripts
+
+commit 3f034463a426ddb9f3da7613476092f85baa8a7f
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Tue Jun 23 07:46:27 2026 -0600
+
+    Remove empty line in order to trigger the nightly tests
+    
+    We'll see if a version file appears.
+
+commit 7baaeb3c53866926bdebd95aeedde76ded6954a6
+Author: Vincent Larson <vlarson@users.noreply.github.com>
+Date:   Fri Jun 19 09:34:38 2026 -0600
+
+    Add blank line in README to trigger git update scripts
+
+commit 118f9cacbc8f47672b47d6d01069449b035a7c76
+Author: nobrewittwer <nils.wittwer@gmx.de>
+Date:   Wed May 20 20:55:43 2026 -0500
+
+    Cleaned up PPE-processing files
+
+commit 16a32eddb5b20f63f095a5294f353ab4e45a0924
+Author: Nils Nobre Wittwer <nils.wittwer@gmx.de>
+Date:   Wed May 20 20:48:50 2026 -0500
+
+    Ppe ratio optimization (#36)
+    
+    * Save progress made towards ratio optimization using ppe data
+    
+    * Created a notebook for comparing the directions of the max ratio PPE members
+    
+    * added notebooks to extract data from the zenodo file and coarsen datasets
+    
+    * Save functions and notebook to compute values for the paper
+    
+    * Cleaned up the notebook and files to reproduce the paper results
+    
+    * Updated requirements.txt and set regularization default to False
+    
+    * started documenting the new code
+    
+    * Documented and updated scripts and uploaded regional files to git lfs
+    
+    * Updated requirements.txt
+    
+    * Update map plots to have slightly higher title
+    
+    * Updated requirements.txt
+    
+    * added system dependant reading backend
+    
+    * fixed typos
+    
+    * Added a description of where the ratio maximization files are to the top level README
