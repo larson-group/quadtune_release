@@ -34,6 +34,7 @@ from plotting import (
     create_shape_vs_scale_plot,
 )
 
+from GP_model import construct_gp_model, construct_train_data, create_torch_evaluator, normalize_data, CombinedGP
 
 import numpy as np
 import xarray as xr
@@ -171,6 +172,8 @@ COLORS = ["red", "blue", "green"]
 
 # Configure how many of the optimization results should be used to create map plots
 NUM_PARAMS_TO_MAP_PLOT = 2
+
+EMULATOR_MODEL ="Quadtune"  # "Quadtune" or "GPyTorch"
 
 
 def main(argv=None):
@@ -319,6 +322,67 @@ def main(argv=None):
         default_dataset.close()
         default_dataset_sst4k.close()
 
+    #Construct Models
+    print("Constructing models...")
+    all_models = {}
+    sst4k_models = {}
+
+
+    if EMULATOR_MODEL == "GPyTorch":
+        X_train_full, y_train_full = construct_train_data(files, params_names=USED_PARAMETER_NAMES, varNames=["SWCF","LWCF","PRECT","TMQ"], boxSize=BOX_SIZE)
+
+        X_train_sst4k, y_train_sst4k = construct_train_data(sst4k_files, params_names=USED_PARAMETER_NAMES, varNames=["SWCF","LWCF","PRECT","TMQ"], boxSize=BOX_SIZE)
+
+
+        X_train_norm, y_train_norm = normalize_data(X_train_full, default_params, y_train_full, default_data, GLOBAL_AVERAGES_OBS[fields_idxs])
+
+        X_train_sst4k_norm, y_train_sst4k_norm = normalize_data(X_train_sst4k, default_params, y_train_sst4k, default_data_sst4k, GLOBAL_AVERAGES_OBS[fields_idxs]) 
+
+        num_vars = len(USED_FIELDS)
+        chunk_size = y_train_norm.shape[1] // num_vars
+
+        y_train_split = {}
+        sst4k_y_train_split = {}
+
+        for i, var in enumerate(USED_FIELDS):
+            start_idx = i * chunk_size
+            end_idx = (i + 1) * chunk_size
+            
+
+            y_train_split[var] = y_train_norm[:, start_idx:end_idx]
+            sst4k_y_train_split[var] = y_train_sst4k_norm[:, start_idx:end_idx]
+
+        model_SWCF = construct_gp_model(X_train_norm, y_train_split["SWCF"])
+        model_LWCF = construct_gp_model(X_train_norm, y_train_split["LWCF"])
+        model_PRECT = construct_gp_model(X_train_norm, y_train_split["PRECT"])
+        model_TMQ = construct_gp_model(X_train_norm, y_train_split["TMQ"])
+        all_models = {
+            "SWCF": model_SWCF,
+            "LWCF": model_LWCF,
+            "PRECT": model_PRECT,
+            "TMQ": model_TMQ,
+        }
+        sst4k_model_SWCF = construct_gp_model(X_train_sst4k_norm, sst4k_y_train_split["SWCF"])
+        sst4k_model_LWCF = construct_gp_model(X_train_sst4k_norm, sst4k_y_train_split["LWCF"])
+        sst4k_model_PRECT = construct_gp_model(X_train_sst4k_norm, sst4k_y_train_split["PRECT"])
+        sst4k_model_TMQ = construct_gp_model(X_train_sst4k_norm, sst4k_y_train_split["TMQ"])
+        sst4k_models = {
+            "SWCF": sst4k_model_SWCF,
+            "LWCF": sst4k_model_LWCF,
+            "PRECT": sst4k_model_PRECT,
+            "TMQ": sst4k_model_TMQ,
+
+        }
+
+
+    elif EMULATOR_MODEL == "Quadtune":
+
+       for field in USED_FIELDS:
+
+        all_models[field] = lambda dp, f=field: evaluate_Quadtune_model(dp, *all_fields_data[f][:2])
+        sst4k_models[field] = lambda dp, f_sst=field: evaluate_Quadtune_model(dp, *all_fields_data[f_sst][2:])
+
+
     if args.e3sm_results is not None:
         e3sm_result_files = get_filenames(args.e3sm_results, DATAPREFIX)
         sst4k_e3sm_result_files = get_filenames(args.e3sm_results_sst4k, DATAPREFIX)
@@ -345,26 +409,28 @@ def main(argv=None):
         if current_field == BASE_FIELD:
             continue
 
-        PD_base_model = lambda dp: evaluate_Quadtune_model(
-            dp, *all_fields_data[BASE_FIELD][:2]
-        )
-        F_base_model = lambda dp: evaluate_Quadtune_model(
-            dp, *all_fields_data[BASE_FIELD][2:]
-        )
-        PD_constr_model = lambda dp: evaluate_Quadtune_model(
-            dp, *all_fields_data[current_field][:2]
-        )
+        PD_base_model = all_models[BASE_FIELD]
+        PD_constr_model = all_models[current_field]
+        F_base_model = sst4k_models[BASE_FIELD]
 
-        combined_PD_SensMatrix = np.vstack(
-            (all_fields_data[BASE_FIELD][0], all_fields_data[current_field][0])
-        )
-        combined_PD_CurvMatrix = np.vstack(
-            (all_fields_data[BASE_FIELD][1], all_fields_data[current_field][1])
-        )
+        if EMULATOR_MODEL == "Quadtune":
+            combined_PD_SensMatrix = np.vstack(
+                    (all_fields_data[BASE_FIELD][0], all_fields_data[current_field][0])
+                )
+            combined_PD_CurvMatrix = np.vstack(
+                    (all_fields_data[BASE_FIELD][1], all_fields_data[current_field][1])
+                )
 
-        PD_combined_model = lambda dp: evaluate_Quadtune_model(
-            dp, combined_PD_SensMatrix, combined_PD_CurvMatrix
-        )
+            PD_combined_model = lambda dp: evaluate_Quadtune_model(
+                    dp, combined_PD_SensMatrix, combined_PD_CurvMatrix
+                )
+        elif EMULATOR_MODEL == "GPyTorch":
+
+            PD_combined_model = CombinedGP(all_models[BASE_FIELD], all_models[current_field])
+
+        else:
+            print(f"Emulator model {EMULATOR_MODEL} not implemented")
+            return
 
         all_optimizations[current_field] = optimize_all(
             BASE_FIELD,
@@ -407,6 +473,13 @@ def main(argv=None):
 
         return flattened_results_dict
 
+    if EMULATOR_MODEL == "GPyTorch":
+        print("Convert GPyTorch models to eval mode and callable")
+        for field in all_models:
+            all_models[field] = create_torch_evaluator(all_models[field])
+        for field in sst4k_models:
+            sst4k_models[field] = create_torch_evaluator(sst4k_models[field])
+
     """
     Create cartoon scatter
     """
@@ -445,7 +518,8 @@ def main(argv=None):
         fields_idxs,
         USED_FIELDS,
         BASE_FIELD,
-        all_fields_data,
+        all_models,
+        sst4k_models,
         GLOBAL_AVERAGES_OBS,
         BOX_SIZE,
         outdir,
@@ -540,16 +614,21 @@ def main(argv=None):
         else:
             PPE_E3SM_res = None
 
-        ax = make_scatterplot(
-            optimized_results,
-            BASE_FIELD,
-            *all_fields_data[BASE_FIELD],
-            current_field,
-            *all_fields_data[current_field],
-            e3sm_PPE_results=PPE_E3SM_res,
-            e3sm_optimized_results=e3sm_results,
-            constrained_opt=CONSTR_OPT,
-        )
+
+        if EMULATOR_MODEL == "GPyTorch":
+            ax = make_scatterplot(
+                optimized_results, BASE_FIELD,all_models[BASE_FIELD],
+            sst4k_models[BASE_FIELD], current_field, all_models[current_field],
+            sst4k_models[current_field], e3sm_PPE_results=PPE_E3SM_res,
+            e3sm_optimized_results=e3sm_results, constrained_opt=CONSTR_OPT)
+        elif EMULATOR_MODEL == "Quadtune":
+            ax = make_scatterplot(
+                optimized_results, BASE_FIELD,all_models[BASE_FIELD], sst4k_models[BASE_FIELD],
+                current_field, all_models[current_field],
+                sst4k_models[current_field], e3sm_PPE_results=PPE_E3SM_res,
+                e3sm_optimized_results=e3sm_results, constrained_opt=CONSTR_OPT,
+                PD_base_SensMatrix=all_fields_data[BASE_FIELD][0],PD_base_CurvMatrix=all_fields_data[BASE_FIELD][1],
+                PD_constr_SensMatrix=all_fields_data[current_field][0],PD_constr_CurvMatrix=all_fields_data[current_field][1])
 
         fig = ax.get_figure()
 

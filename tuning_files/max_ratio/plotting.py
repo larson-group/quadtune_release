@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -96,51 +97,27 @@ def create_parameter_bar_chart(parametersets, parameter_names, parameter_set_nam
 
 
 
-def create_map_plots(all_optimizations: dict[str, dict[str,np.ndarray]], fields_idxs:list[int], used_fields:list[str], base_field:str, all_fields_data : dict[str,np.ndarray], global_averages_obs: np.ndarray, box_size:int, outdir:Path, plot_width:int=600 ,num_sets_to_plot:int=2):
+def create_map_plots(
+    all_optimizations: dict[str, dict[str, np.ndarray]], 
+    fields_idxs: list[int], 
+    used_fields: list[str], 
+    base_field: str, 
+    all_models: dict[str, Callable], 
+    sst4k_models: dict[str, Callable], 
+    global_averages_obs: np.ndarray, 
+    box_size: int, 
+    outdir: Path, 
+    plot_width: int = 600, 
+    num_sets_to_plot: int = 2
+):
     """
-    Generates and saves spatial maps for perturbed variables 
-    using quadratic model evaluations from Quadtune.
-
-    Computes global minimum and maximum bounds across a specified number of 
-    parameter sets to ensure uniform color scaling, then evaluates and plots 
-    both baseline and constrained target variables for SST and SST+4K.
-
-    Parameters
-    ----------
-    all_optimizations : dict
-        Nested dictionary mapping field names to their optimization results.
-    fields_idxs : list of int
-        Indices corresponding to the used fields within all_fields.
-    used_fields : list of str
-        Names of all fields being evaluated.
-    base_field : str
-        Name of the base field.
-    all_fields_data : dict
-        Dictionary mapping field names to their respective sensitivity and curvature matrices.
-    global_averages_obs : numpy.ndarray
-        1D array of global averages used to scale normalized data back to 
-        absolute perturbation values.
-    box_size : int
-        Grid resolution constraint for the underlying map generation.
-    outdir : pathlib.Path
-        Output directory for the generated PDF files.
-    plot_width : int, optional
-        Width of the generated plot panels (default is 600).
-    num_sets_to_plot : int, optional
-        Number of parameter sets to evaluate and plot (default is 2).
-
-    Returns
-    -------
-    None
+    Generates and saves spatial maps for perturbed variables a general model.
     """
-    
     base_plot_done = False
-
     base_field_idx = fields_idxs[used_fields.index(base_field)]
     
-    
-    base_PD_matrices = all_fields_data[base_field][:2]
-    base_F_matrices = all_fields_data[base_field][2:]
+    base_PD_model = all_models[base_field]
+    base_F_model = sst4k_models[base_field]
 
     all_param_sets = []
     for field_dict in all_optimizations.values():
@@ -150,70 +127,58 @@ def create_map_plots(all_optimizations: dict[str, dict[str,np.ndarray]], fields_
     global_base_min = np.inf
     global_base_max = -np.inf
     for p_set in all_param_sets:
-        pd_eval = evaluate_Quadtune_model(p_set, *base_PD_matrices) * np.abs(global_averages_obs[base_field_idx])
-        f_eval = evaluate_Quadtune_model(p_set, *base_F_matrices) * np.abs(global_averages_obs[base_field_idx])
+        pd_eval = base_PD_model(p_set) * np.abs(global_averages_obs[base_field_idx])
+        f_eval = base_F_model(p_set) * np.abs(global_averages_obs[base_field_idx])
         global_base_min = min(global_base_min, np.min(pd_eval), np.min(f_eval))
         global_base_max = max(global_base_max, np.max(pd_eval), np.max(f_eval))
 
-    for idx, field in enumerate(used_fields): 
-
+    for idx, field in enumerate(used_fields):
         if field == base_field:
             continue
 
         parameter_sets_names = list(all_optimizations[field].keys())[:num_sets_to_plot]
-        parameter_sets  = np.array([result[0] for result in list(all_optimizations[field].values())[:num_sets_to_plot]])
+        parameter_sets = np.array([result[0] for result in list(all_optimizations[field].values())[:num_sets_to_plot]])
         
-
-        constr_PD_matrices = all_fields_data[field][:2]
-        constr_F_matrices = all_fields_data[field][2:]
+        constr_PD_model = all_models[field]
+        constr_F_model = sst4k_models[field]
 
         for set_idx, parameter_set in enumerate(parameter_sets):
-            
-            param_name = parameter_sets_names[set_idx].replace("res","dp")
+            param_name = parameter_sets_names[set_idx].replace("res", "dp")
             latex_name = latexify_parameterset_name(param_name)
-
             math_content = latex_name.replace('$', '')
-
 
             global_constr_min = np.inf
             global_constr_max = -np.inf
             for p_set in all_param_sets:
-                pd_eval = evaluate_Quadtune_model(p_set, *constr_PD_matrices) * np.abs(global_averages_obs[fields_idxs[idx]])
-                f_eval = evaluate_Quadtune_model(p_set, *constr_F_matrices) * np.abs(global_averages_obs[fields_idxs[idx]])
+                pd_eval = constr_PD_model(p_set) * np.abs(global_averages_obs[fields_idxs[idx]])
+                f_eval = constr_F_model(p_set) * np.abs(global_averages_obs[fields_idxs[idx]])
                 global_constr_min = min(global_constr_min, np.min(pd_eval), np.min(f_eval))
                 global_constr_max = max(global_constr_max, np.max(pd_eval), np.max(f_eval))
 
             if set_idx != 0 or not base_plot_done:
-
                 if set_idx == 0:
                     base_plot_done = True
-                normalized_base_PD_plot_data = evaluate_Quadtune_model(parameter_set, *base_PD_matrices)
-                normalized_base_F_plot_data = evaluate_Quadtune_model(parameter_set, *base_F_matrices)
+                
+                normalized_base_PD_plot_data = base_PD_model(parameter_set)
+                normalized_base_F_plot_data = base_F_model(parameter_set)
 
+                diff_base_PD_plot_data = normalized_base_PD_plot_data * np.abs(global_averages_obs[base_field_idx])
+                diff_base_F_plot_data = normalized_base_F_plot_data * np.abs(global_averages_obs[base_field_idx])
 
-
-                diff_base_PD_plot_data = normalized_base_PD_plot_data*np.abs(global_averages_obs[base_field_idx])
-                diff_base_F_plot_data = normalized_base_F_plot_data*np.abs(global_averages_obs[base_field_idx])
-
-
-                base_PD_plot = createMapPanel(diff_base_PD_plot_data,plot_width,rf"$\text{{{base_field} present-day perturbation for }} {math_content}$",box_size, minField=global_base_min,maxField=global_base_max)
-                base_F_plot = createMapPanel(diff_base_F_plot_data,plot_width,rf"$\text{{{base_field} future perturbation for }} {math_content}$",box_size, minField=global_base_min, maxField=global_base_max)
+                base_PD_plot = createMapPanel(diff_base_PD_plot_data, plot_width, rf"$\text{{{base_field} present-day perturbation for }} {math_content}$", box_size, minField=global_base_min, maxField=global_base_max)
+                base_F_plot = createMapPanel(diff_base_F_plot_data, plot_width, rf"$\text{{{base_field} future perturbation for }} {math_content}$", box_size, minField=global_base_min, maxField=global_base_max)
 
                 base_PD_plot.write_image(outdir / f"Diff_Map_PD_{param_name}_{base_field}.pdf")
                 base_F_plot.write_image(outdir / f"Diff_Map_F_{param_name}_{base_field}.pdf")
 
+            normalized_constr_PD_plot_data = constr_PD_model(parameter_set)
+            normalized_constr_F_plot_data = constr_F_model(parameter_set)
 
-            
-             
-
-            normalized_constr_PD_plot_data = evaluate_Quadtune_model(parameter_set, *constr_PD_matrices)
-            normalized_constr_F_plot_data = evaluate_Quadtune_model(parameter_set, *constr_F_matrices)
-
-            diff_constr_PD_plot_data = normalized_constr_PD_plot_data*np.abs(global_averages_obs[fields_idxs[idx]])
-            diff_constr_F_plot_data = normalized_constr_F_plot_data*np.abs(global_averages_obs[fields_idxs[idx]])
+            diff_constr_PD_plot_data = normalized_constr_PD_plot_data * np.abs(global_averages_obs[fields_idxs[idx]])
+            diff_constr_F_plot_data = normalized_constr_F_plot_data * np.abs(global_averages_obs[fields_idxs[idx]])
 
             constr_PD_plot = createMapPanel(diff_constr_PD_plot_data, plot_width, rf"$\text{{{field} present-day perturbation for }} {math_content}$", box_size, minField=global_constr_min, maxField=global_constr_max)
-            constr_F_plot = createMapPanel(diff_constr_F_plot_data, plot_width,rf"$\text{{{field} future perturbation for }} {math_content}$", box_size, minField=global_constr_min, maxField=global_constr_max)
+            constr_F_plot = createMapPanel(diff_constr_F_plot_data, plot_width, rf"$\text{{{field} future perturbation for }} {math_content}$", box_size, minField=global_constr_min, maxField=global_constr_max)
 
             constr_PD_plot.write_image(outdir / f"Diff_Map_PD_{param_name}_{field}.pdf")
             constr_F_plot.write_image(outdir / f"Diff_Map_F_{param_name}_{field}.pdf")
@@ -221,171 +186,134 @@ def create_map_plots(all_optimizations: dict[str, dict[str,np.ndarray]], fields_
             
 
 
-def make_scatterplot(results, base_var_name, PD_base_SensMatrix, PD_base_CurvMatrix, F_base_SensMatrix,
-                      F_base_CurvMatrix,constr_var_name, PD_constr_SensMatrix, PD_constr_CurvMatrix,
-                        F_constr_SensMatrix, F_constr_CurvMatrix, combined_future = False, additional_params = None, e3sm_PPE_results=None, e3sm_optimized_results=None, include_average_constr =True, constrained_opt = False, ax =None):
+def make_scatterplot(
+    results: dict, 
+    base_var_name: str, 
+    base_PD_model: Callable, 
+    base_F_model: Callable,
+    constr_var_name: str, 
+    constr_PD_model: Callable, 
+    constr_F_model: Callable, 
+    combined_future: bool = False, 
+    additional_params: np.ndarray = None, 
+    e3sm_PPE_results: tuple = None, 
+    e3sm_optimized_results: tuple = None, 
+    include_average_constr: bool = True, 
+    constrained_opt: bool = False, 
+    ax: plt.Axes = None,
+    # Optional matrices for E_RR calculation (Quadtune only)
+    PD_base_SensMatrix=None, PD_base_CurvMatrix=None,
+    PD_constr_SensMatrix=None, PD_constr_CurvMatrix=None
+):
     """
-    Generates a scatterplot evaluating the trade-off between baseline results and constrained results.
-
-    Plots initial versus final optimization states, draws relational vectors, 
-    and overlays supplementary sample data to visualize the restriction imposed 
-    by secondary constraints.
-
-    Parameters
-    ----------
-    results : dict
-        Dictionary of parameter vectors generated by the optimization routines.
-    base_var_name, constr_var_name : str
-        Identifiers for the base field and the secondary constraining field.
-    PD_base_SensMatrix, PD_base_CurvMatrix : numpy.ndarray
-        Baseline sensitivity and curvature matrices for the base field.
-    F_base_SensMatrix, F_base_CurvMatrix : numpy.ndarray
-        SST+4K sensitivity and curvature matrices for the base field.
-    PD_constr_SensMatrix, PD_constr_CurvMatrix : numpy.ndarray
-        Baseline matrices for the secondary constraining field.
-    F_constr_SensMatrix, F_constr_CurvMatrix : numpy.ndarray
-        SST+4K matrices for the secondary constraining field.
-    combined_future : bool, optional
-        If True, the future scenario to optimze consists of both the base field and the constraining field (default is False).
-    additional_params : list or numpy.ndarray, optional
-        Matrix of supplementary parameter sets to scatter as additional data.
-    e3sm_PPE_results, e3sm_optimized_results : tuple of numpy.ndarray, optional
-        Computed summed squared deviations for the underlying PPE and validation runs.
-    include_average_constr : bool, optional
-        If True, plots a reference line representing the expected ratio (default is True).
-    constrained_opt : bool, optional
-        Toggles between a ratio optimization and constrained optimization (default is False).
-    ax : matplotlib.axes.Axes, optional
-        Pre-existing axes for the plot.
-
-    Returns
-    -------
-    matplotlib.axes.Axes
-        The updated axes object.
+    Generates a scatterplot evaluating the trade-off between baseline and constrained results
+    using model-agnostic callables.
     """
     if ax is None:
         fig, ax = plt.subplots(figsize=(8,8))
 
-    if constr_var_name == "TMQ":
-        short_constr_name = 'Q'
-    else:
-        short_constr_name = constr_var_name[0]
-
-    if base_var_name == "TMQ":
-        short_base_name = 'Q'
-    else:
-        short_base_name = base_var_name[0]
+    short_constr_name = 'Q' if constr_var_name == "TMQ" else constr_var_name[0]
+    short_base_name = 'Q' if base_var_name == "TMQ" else base_var_name[0]
 
 
-    if combined_future:
-        Future_SensMatrix = np.vstack((F_base_SensMatrix,F_constr_SensMatrix))
-        Future_CurvMatrix = np.vstack((F_base_CurvMatrix,F_constr_CurvMatrix))
-  
-    else:
-        Future_SensMatrix = F_base_SensMatrix
-        Future_CurvMatrix = F_base_CurvMatrix
+    def F_base_fun(dp):
+        return np.sum(base_F_model(dp)**2)
 
+    def F_combinded_fun(dp):
+        return np.sum(base_F_model(dp)**2) + np.sum(constr_F_model(dp)**2)
 
-    combined_PD_SensMatrix = np.vstack((PD_base_SensMatrix,PD_constr_SensMatrix))
-    combined_PD_CurvMatrix =  np.vstack((PD_base_CurvMatrix,PD_constr_CurvMatrix))
+    def PD_base_fun(dp):
+        return np.sum(base_PD_model(dp)**2)
+
+    def PD_combinded_fun(dp):
+        return np.sum(base_PD_model(dp)**2) + np.sum(constr_PD_model(dp)**2)
+
+    def PD_constr_fun(dp):
+        return np.sum(constr_PD_model(dp)**2)
+
 
     if constrained_opt:
-        R_F_B_fun = lambda dp: np.sum(evaluate_Quadtune_model(dp, Future_SensMatrix, Future_CurvMatrix)**2)
-        R_F_BC_fun = lambda dp: evaluate_Quadtune_ratio(dp, Future_SensMatrix, Future_CurvMatrix, PD_constr_SensMatrix, PD_constr_CurvMatrix, eps=1)
+        if combined_future:
+            R_F_B_fun = F_combinded_fun
+            # Emulating the eps=1 behavior from evaluate_Quadtune_ratio
+            R_F_BC_fun = lambda dp: F_combinded_fun(dp) / (PD_constr_fun(dp) + 1.0)
+        else:
+            R_F_B_fun = F_base_fun
+            R_F_BC_fun = lambda dp: F_base_fun(dp) / (PD_constr_fun(dp) + 1.0)
     else:
-        R_F_B_fun = lambda dp: evaluate_Quadtune_ratio(dp,Future_SensMatrix, Future_CurvMatrix,PD_base_SensMatrix, PD_base_CurvMatrix)
-        R_F_BC_fun = lambda dp: evaluate_Quadtune_ratio(dp,Future_SensMatrix, Future_CurvMatrix,combined_PD_SensMatrix, combined_PD_CurvMatrix)
-
-   
+        # Ratio Optimization
+        if combined_future:
+            R_F_B_fun = lambda dp: F_combinded_fun(dp) / PD_base_fun(dp)
+            R_F_BC_fun = lambda dp: F_combinded_fun(dp) / PD_combinded_fun(dp)
+        else:
+            R_F_B_fun = lambda dp: F_base_fun(dp) / PD_base_fun(dp)
+            R_F_BC_fun = lambda dp: F_base_fun(dp) / PD_combinded_fun(dp)
 
     R_max_F_B = results[f"res_max_F_{short_base_name}"][1]
 
     dp_max_F_B = results[f"res_max_F_{short_base_name}"][0]
     dp_max_F_BC = results[f"res_max_F_{short_base_name}{short_constr_name}"][0]
     dp_max_C_B = results[f"res_max_{short_constr_name}_{short_base_name}"][0]
-    # dp_min_C_B = results[f"res_min_{short_constr_name}_{short_base_name}"][0]
 
+    initial_x = R_F_B_fun(dp_max_F_B) / R_max_F_B
+    initial_y = R_F_BC_fun(dp_max_F_B) / R_max_F_B
+    initial_name = latexify_parameterset_name(f"res_max_F_{short_base_name}".replace("res","dp"))
 
-    initial_x = R_F_B_fun(dp_max_F_B)/R_max_F_B
-    initial_y = R_F_BC_fun(dp_max_F_B)/R_max_F_B
-
-    initial_name= latexify_parameterset_name(f"res_max_F_{short_base_name}".replace("res","dp"))
-
-    final_x = R_F_B_fun(dp_max_F_BC)/R_max_F_B
-    final_y = R_F_BC_fun(dp_max_F_BC)/R_max_F_B
-
+    final_x = R_F_B_fun(dp_max_F_BC) / R_max_F_B
+    final_y = R_F_BC_fun(dp_max_F_BC) / R_max_F_B
     final_name = latexify_parameterset_name(f"res_max_F_{short_base_name}{short_constr_name}".replace("res","dp"))
 
-    sns.scatterplot(x=[initial_x], y=[initial_y],label=initial_name, color="red",s=200,linewidth=2,ax = ax)
-    sns.scatterplot(x=[final_x], y=[final_y],label=final_name, color="red",marker="x",s=200,linewidth=2,ax = ax)
-    # sns.scatterplot(x=[R_F_B_fun(dp_max_C_B)/R_max_F_B], y=[R_F_BC_fun(dp_max_C_B)/R_max_F_B],label=fr'$dp_{{max}}^{{{short_constr_name},{short_base_name}}}$', color="red",marker="+",s=100,linewidth=2,ax = ax)
-    # sns.scatterplot(x=[R_F_B_fun(dp_min_C_B)/R_max_F_B], y=[R_F_BC_fun(dp_min_C_B)/R_max_F_B],label=fr'$dp_{{min}}^{{{short_constr_name},{short_base_name}}}$', color="red",marker="*",edgecolor="red",s=100,linewidth=2,ax = ax)
 
-    ax.annotate("", xy=(final_x,final_y), xytext = (initial_x, initial_y), arrowprops=dict(arrowstyle=f"->,head_width={0.4}",color="black",lw=2,shrinkA=12, shrinkB=12))
+    sns.scatterplot(x=[initial_x], y=[initial_y], label=initial_name, color="red", s=200, linewidth=2, ax=ax)
+    sns.scatterplot(x=[final_x], y=[final_y], label=final_name, color="red", marker="x", s=200, linewidth=2, ax=ax)
+    ax.annotate("", xy=(final_x, final_y), xytext=(initial_x, initial_y), arrowprops=dict(arrowstyle="->,head_width=0.4", color="black", lw=2, shrinkA=12, shrinkB=12))
+
 
     if additional_params is not None:
+        PPE_R_F_B_results = np.array([R_F_B_fun(dp) for dp in additional_params])
+        PPE_R_F_BC_results = np.array([R_F_BC_fun(dp) for dp in additional_params])
+        sns.scatterplot(x=PPE_R_F_B_results/R_max_F_B, y=PPE_R_F_BC_results/R_max_F_B, label="PPE samples", color="purple", alpha=0.5, ax=ax)
 
-        PPE_R_F_B_results = np.apply_along_axis(R_F_B_fun, 1, np.array(additional_params))
-
-        PPE_R_F_BC_results = np.apply_along_axis(R_F_BC_fun, 1, np.array(additional_params))
-
-        sns.scatterplot(x=PPE_R_F_B_results/R_max_F_B, y=PPE_R_F_BC_results/R_max_F_B, label="PPE samples", color="purple",alpha=0.5,ax = ax)
-
-    if e3sm_PPE_results is not None:
-
-        if e3sm_PPE_results[0] is not None:
-                   
-            PPE_deltas = e3sm_PPE_results[0]
-            PPE_deltas_sst4k = e3sm_PPE_results[1]
-
-            if combined_future:
-                PPE_F_B_E3SM_ratios = np.sum(PPE_deltas_sst4k,axis=1)/PPE_deltas[:,0]
-                PPE_F_BC_E3SM_ratios = np.sum(PPE_deltas_sst4k,axis=1)/np.sum(PPE_deltas,axis=1)
-            else:
-                PPE_F_B_E3SM_ratios = PPE_deltas_sst4k[:,0]/PPE_deltas[:,0]
-                PPE_F_BC_E3SM_ratios = PPE_deltas_sst4k[:,0]/np.sum(PPE_deltas,axis=1)
-
-
-        sns.scatterplot(x=PPE_F_B_E3SM_ratios/R_max_F_B, y=PPE_F_BC_E3SM_ratios/R_max_F_B, label="PPE samples", color="purple",s=100,alpha=0.5,ax = ax)
+    if e3sm_PPE_results is not None and e3sm_PPE_results[0] is not None:
+        PPE_deltas, PPE_deltas_sst4k = e3sm_PPE_results
+        if combined_future:
+            PPE_F_B_E3SM_ratios = np.sum(PPE_deltas_sst4k, axis=1) / PPE_deltas[:,0]
+            PPE_F_BC_E3SM_ratios = np.sum(PPE_deltas_sst4k, axis=1) / np.sum(PPE_deltas, axis=1)
+        else:
+            PPE_F_B_E3SM_ratios = PPE_deltas_sst4k[:,0] / PPE_deltas[:,0]
+            PPE_F_BC_E3SM_ratios = PPE_deltas_sst4k[:,0] / np.sum(PPE_deltas, axis=1)
+        sns.scatterplot(x=PPE_F_B_E3SM_ratios/R_max_F_B, y=PPE_F_BC_E3SM_ratios/R_max_F_B, label="PPE samples", color="purple", s=100, alpha=0.5, ax=ax)
 
     if e3sm_optimized_results is not None:
-        PPE_deltas = e3sm_optimized_results[0]
-        PPE_deltas_sst4k = e3sm_optimized_results[1]
-
+        PPE_deltas, PPE_deltas_sst4k = e3sm_optimized_results
         if combined_future:
-            PPE_F_B_E3SM_ratios = np.sum(PPE_deltas_sst4k,axis=1)/PPE_deltas[:,0]
-            PPE_F_BC_E3SM_ratios = np.sum(PPE_deltas_sst4k,axis=1)/np.sum(PPE_deltas,axis=1)
+            PPE_F_B_E3SM_ratios = np.sum(PPE_deltas_sst4k, axis=1) / PPE_deltas[:,0]
+            PPE_F_BC_E3SM_ratios = np.sum(PPE_deltas_sst4k, axis=1) / np.sum(PPE_deltas, axis=1)
         else:
-            PPE_F_B_E3SM_ratios = PPE_deltas_sst4k[:,0]/PPE_deltas[:,0]
-            PPE_F_BC_E3SM_ratios = PPE_deltas_sst4k[:,0]/np.sum(PPE_deltas,axis=1)
+            PPE_F_B_E3SM_ratios = PPE_deltas_sst4k[:,0] / PPE_deltas[:,0]
+            PPE_F_BC_E3SM_ratios = PPE_deltas_sst4k[:,0] / np.sum(PPE_deltas, axis=1)
 
+        sns.scatterplot(x=[PPE_F_B_E3SM_ratios[0]/R_max_F_B], y=[PPE_F_BC_E3SM_ratios[0]/R_max_F_B], label=rf'E3SM $dp_{{max}}^{{F,{short_base_name}}}$', color="green", s=100, linewidth=2, ax=ax)
+        sns.scatterplot(x=[PPE_F_B_E3SM_ratios[1]/R_max_F_B], y=[PPE_F_BC_E3SM_ratios[1]/R_max_F_B], label=rf'E3SM $dp_{{max}}^{{F,{short_base_name}{short_constr_name}}}$', color="green", marker="x", s=100, linewidth=2, ax=ax)
 
-        sns.scatterplot(x=[PPE_F_B_E3SM_ratios[0]/R_max_F_B], y=[PPE_F_BC_E3SM_ratios[0]/R_max_F_B],label=rf'E3SM $dp_{{max}}^{{F,{short_base_name}}}$', color="green",s=100,linewidth=2,ax = ax)
-        sns.scatterplot(x=[PPE_F_B_E3SM_ratios[1]/R_max_F_B], y=[PPE_F_BC_E3SM_ratios[1]/R_max_F_B],label=rf'E3SM $dp_{{max}}^{{F,{short_base_name}{short_constr_name}}}$', color="green",marker="x",s=100,linewidth=2,ax = ax)
-        # sns.scatterplot(x=[PPE_F_B_E3SM_ratios[2]/R_max_F_B], y=[PPE_F_BC_E3SM_ratios[2]/R_max_F_B],label=rf'E3SM $dp_{{max}}^{{{short_constr_name},{short_base_name}}}$', color="green",marker="+",s=100,linewidth=2,ax = ax)
 
     if include_average_constr:
-        dp_ref = dp_max_C_B
-
-        H_B = get_H_at_dp(PD_base_SensMatrix, PD_base_CurvMatrix, dp_ref)
-        H_C = get_H_at_dp(PD_constr_SensMatrix, PD_constr_CurvMatrix, dp_ref)
-
-        E_RR = calc_E_RR(H_B, H_C)
-
-        sns.lineplot(x=[0,1],y =[0,E_RR], label=r"Average ratio ($\mathcal{E}_{RR}$)", linestyle=":",linewidth = 4,color="cyan", ax=ax)
+        if PD_base_SensMatrix is not None and PD_base_CurvMatrix is not None:
+            dp_ref = dp_max_C_B
+            H_B = get_H_at_dp(PD_base_SensMatrix, PD_base_CurvMatrix, dp_ref)
+            H_C = get_H_at_dp(PD_constr_SensMatrix, PD_constr_CurvMatrix, dp_ref)
+            E_RR = calc_E_RR(H_B, H_C)
+            sns.lineplot(x=[0,1], y=[0,E_RR], label=r"Average ratio ($\mathcal{E}_{RR}$)", linestyle=":", linewidth=4, color="cyan", ax=ax)
 
 
     ax.tick_params(axis='both', labelsize=14)
-    ax.set_xlabel(fr'$\frac{{R^{{(F,{short_base_name})}}}}{{R^{{(F,{short_base_name})}}_{{max}}}}$',fontsize=24)
-    ax.set_ylabel(fr'$\frac{{R^{{(F,{short_base_name}{short_constr_name})}}}}{{R^{{(F,{short_base_name})}}_{{max}}}}$',fontsize=24,rotation=0,ha='right', va='center')
-
+    ax.set_xlabel(fr'$\frac{{R^{{(F,{short_base_name})}}}}{{R^{{(F,{short_base_name})}}_{{max}}}}$', fontsize=24)
+    ax.set_ylabel(fr'$\frac{{R^{{(F,{short_base_name}{short_constr_name})}}}}{{R^{{(F,{short_base_name})}}_{{max}}}}$', fontsize=24, rotation=0, ha='right', va='center')
     ax.yaxis.set_label_coords(-0.05, 0.50)
 
-    sns.lineplot(x=[0,1],y=[0,1], label="Upper bound", color="black", linestyle="--",alpha=0.5,ax = ax)
-
-    ax.tick_params(axis='both', labelsize=14)
-
+    sns.lineplot(x=[0,1], y=[0,1], label="Upper bound", color="black", linestyle="--", alpha=0.5, ax=ax)
     ax.legend(framealpha=0.9, fontsize=20, title_fontsize=20)
+    
     return ax
 
 

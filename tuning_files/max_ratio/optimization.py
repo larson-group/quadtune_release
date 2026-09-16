@@ -4,32 +4,61 @@ import warnings
 import numpy as np
 
 from scipy.optimize import basinhopping
+import torch
 
+import torch.nn as nn
 """
 All functions needed for the optimization of the different ratios
 """
-def maximize_ratio(
-    numerator_model,
-    denominator_model,
-    bounds,
-    eps=1e-4,
-    starting_pos=None,
-    seed=None,
-):
-    
-    def ratio_fun(dp):
-        return -numerator_model(dp)/denominator_model(dp)
-    
+def maximize_ratio(numerator_model, denominator_model, bounds=None, eps=1e-4, starting_pos=None, seed=None):
+    """
+    Maximizes the ratio between two models. 
+    Dynamically switches between analytical PyTorch gradients and Quadtune evaluations.
+    """
     if starting_pos is None:
-        starting_pos =  np.zeros(len(bounds))
+        starting_pos = np.zeros(len(bounds))
+
+    is_pytorch = isinstance(numerator_model, nn.Module)
+
+    if is_pytorch:
+        numerator_model.eval()
+        denominator_model.eval()
+
+    def objective_fun(dp):
+        if is_pytorch:
+            dp_tensor = torch.tensor(dp, dtype=torch.float64, requires_grad=True)
+            
+
+            num_out = numerator_model(dp_tensor.unsqueeze(0)).mean.squeeze(0)
+            denom_out = denominator_model(dp_tensor.unsqueeze(0)).mean.squeeze(0)
+            
+
+            obj = -torch.sum(num_out**2) / (torch.sum(denom_out**2) + eps)
+            obj.backward()
+            
+            return obj.detach().numpy().astype(np.float64), dp_tensor.grad.numpy().astype(np.float64)
+            
+        else:
+            return -numerator_model(dp) / (denominator_model(dp) + eps)
+
+    minimizer_kwargs = {"method": "SLSQP"}
+    if bounds is not None:
+        minimizer_kwargs["bounds"] = bounds
+
+
+    if is_pytorch:
+        minimizer_kwargs["jac"] = True
+
+    optimal_niter = 20 if is_pytorch else 1000
 
     result = basinhopping(
-            ratio_fun,
-            starting_pos,
-            niter=1000,
-            rng=seed,
-            minimizer_kwargs={"method": "SLSQP", "bounds": bounds})
-    
+        objective_fun,
+        starting_pos,
+        niter=optimal_niter,
+        rng=seed,
+        minimizer_kwargs=minimizer_kwargs,
+    )
+
     return result.x, -result.fun
     
 
@@ -89,28 +118,76 @@ def maximize_constr_problem(
     if starting_pos is None:
         starting_pos = np.zeros(len(bounds))
 
+    is_pytorch = isinstance(numerator_model, torch.nn.Module)
+
+    if is_pytorch:
+        base_model.eval()
+        numerator_model.eval()
+        if denominator_model is not None:
+            denominator_model.eval()
 
     def objective_fun(dp):
-        if denominator_model is not None:
-            return -np.sum(numerator_model(dp)**2)/(np.sum(denominator_model(dp)**2)+constr_value+eps)
+        if is_pytorch:
+            # Gaussian Process Models (PyTorch) with autograd
+            dp_tensor = torch.tensor(dp, dtype=torch.float64, requires_grad=True)
+            num_out = numerator_model(dp_tensor.unsqueeze(0)).mean.squeeze(0)
+            
+            if denominator_model is not None:
+                denom_out = denominator_model(dp_tensor.unsqueeze(0)).mean.squeeze(0)
+                obj = -torch.sum(num_out**2) / (torch.sum(denom_out**2) + constr_value + eps)
+            else:
+                obj = -torch.sum(num_out**2)
+                
+            obj.backward()
+            return obj.detach().numpy().astype(np.float64), dp_tensor.grad.numpy().astype(np.float64)
+            
         else:
-            return -np.sum(numerator_model(dp)**2)
+            # Quadtune Model
+            if denominator_model is not None:
+                return -np.sum(numerator_model(dp)**2) / (np.sum(denominator_model(dp)**2) + constr_value + eps)
+            else:
+                return -np.sum(numerator_model(dp)**2)
 
-    def constraint_fun(dp):
-        base_val = np.sum(base_model(dp)**2)
-        return constr_value - base_val
+    def constraint_fun(dp): 
+        if is_pytorch:
+            dp_tensor = torch.tensor(dp, dtype=torch.float64)
+            with torch.no_grad():
+                base_out = base_model(dp_tensor.unsqueeze(0)).mean.squeeze(0)
+                base_val = torch.sum(base_out**2)
+            return (constr_value - base_val).numpy().astype(np.float64)
+        else:
+            base_val = np.sum(base_model(dp)**2)
+            return constr_value - base_val
 
-    constraints = [{"type": "ineq", "fun": constraint_fun}]
+    def constraint_jac(dp):
+        dp_tensor = torch.tensor(dp, dtype=torch.float64, requires_grad=True)
+        base_out = base_model(dp_tensor.unsqueeze(0)).mean.squeeze(0)
+        constr_obj = constr_value - torch.sum(base_out**2)
+        constr_obj.backward()
+        return dp_tensor.grad.numpy().astype(np.float64)
 
-    minimizer_kwargs = {"method": "SLSQP", "constraints": constraints}
+    constraints_dict = {"type": "ineq", "fun": constraint_fun}
+    if is_pytorch:
+        constraints_dict["jac"] = constraint_jac
 
+    minimizer_kwargs = {
+        "method": "SLSQP",
+        "constraints": [constraints_dict]
+    }
+
+
+
+    if is_pytorch:
+        minimizer_kwargs["jac"] = True
     if bounds is not None:
         minimizer_kwargs["bounds"] = bounds
+
+    optimal_niter = 20 if is_pytorch else 1000
 
     result = basinhopping(
         objective_fun,
         starting_pos,
-        niter=1000,
+        niter=optimal_niter,
         rng=seed,
         minimizer_kwargs=minimizer_kwargs,
     )
@@ -259,7 +336,7 @@ def optimize_all(
         # optimize for future over base
         
         print(f"Maximizing {base_var_name} future over {base_var_name} present-day ")
-        results[f"res_max_F_{short_base_name}"] = maximize_ratio(F_base_model,PD_constr_model, bounds=normlzd_param_bounds,eps=eps)
+        results[f"res_max_F_{short_base_name}"] = maximize_ratio(F_base_model,PD_base_model, bounds=normlzd_param_bounds,eps=eps)
 
 
         # optimize for future over restricted base
@@ -291,29 +368,16 @@ def optimize_all(
     return results
 
 
-def normalize_metrics_data(metrics_data, default_data, global_averages):
-    """
-    Standardizes output metrics by their respective global observed average and default result.
-
-    Parameters
-    ----------
-    metrics_data : numpy.ndarray
-        1D array of flattened spatial data.
-    default_data : numpy.ndarray
-        1D array of flattened default data.
-    global_averages : numpy.ndarray
-        1D array of reference averages used as weighting factors.
-
-    Returns
-    -------
-    numpy.ndarray
-        Weighted, dimensionless differences from the baseline.
-    """
-    length = metrics_data.shape[0] // len(global_averages)
-
-    weights = np.repeat(np.abs(global_averages), length)
-
-    return (metrics_data - default_data) / weights
+def normalize_metrics_data(metrics_data, default_data, global_average_obs):
+    num_features = len(default_data)
+    
+    factors = np.zeros(num_features)
+    length = num_features // len(global_average_obs)
+    
+    for i in range(len(global_average_obs)):
+        factors[i*length:(i+1)*length] = np.abs(global_average_obs[i])
+        
+    return (metrics_data - default_data) / factors
 
 
 def denormalize_metrics_data(normalized_data, default_data, global_averages):

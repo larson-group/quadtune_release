@@ -1,3 +1,7 @@
+import os
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from functools import partial
+
 import numpy as np
 
 import xarray as xr
@@ -73,6 +77,11 @@ def get_filenames(path, dataprefix):
     return files
 
 
+def _flatten_dataset_variables(dataset, names):
+    """Flatten a set of dataset variables into a 1D NumPy array."""
+    return np.concatenate([np.ravel(dataset[name].values) for name in names])
+
+
 def get_params_from_files(files, params_names):
     """
     Extracts specified parameter values across multiple NetCDF datasets.
@@ -92,12 +101,64 @@ def get_params_from_files(files, params_names):
     params = []
 
     for file in files:
-        dataset = xr.open_dataset(file,engine=engine)
-        param_values = dataset[params_names].to_array().values
-        params.append(param_values.flatten())
+        with xr.open_dataset(file, engine=engine) as dataset:
+            params.append(_flatten_dataset_variables(dataset, params_names))
 
     return params
 
+def _read_params_and_metrics_from_file(file, params_names, metric_names):
+    """Read parameter and metric values from a single NetCDF file."""
+    with xr.open_dataset(file, engine=engine) as dataset:
+        param_values = _flatten_dataset_variables(dataset, params_names)
+        metric_values = _flatten_dataset_variables(dataset, metric_names)
+
+    return param_values, metric_values
+
+
+def get_params_and_metrics_from_files(files, params_names, varNames, boxSize):
+    """
+    Extracts both parameter values and regional metrics from multiple NetCDF datasets.
+
+    Parameters
+    ----------
+    files : list of str
+        List of file paths to process.
+    params_names : list of str
+        List of parameter names to extract from each dataset.
+    varNames : list of str
+        List of variable base names for metrics extraction.
+    boxSize : int
+        Grid resolution in degrees (assumes a global 360x180 grid).
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - List of 1D arrays of parameter values for each file.
+        - List of 1D arrays of regional metrics for each file.
+    """
+    metric_names = get_metrics_names(varNames, boxSize)
+
+    if not files:
+        return [], []
+
+    if len(files) == 1:
+        results = [_read_params_and_metrics_from_file(files[0], params_names, metric_names)]
+    else:
+        max_workers = max(1, min(8, len(files)))
+        
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            results = list(executor.map(
+                _read_params_and_metrics_from_file,
+                files,
+                [params_names] * len(files),
+                [metric_names] * len(files)
+            ))
+
+    params = np.array([result[0] for result in results])
+    metrics = np.array([result[1] for result in results])
+
+    return params, metrics
 
 def calc_metric_sum_delta_from_data(data, default_data, global_averages):
     """
@@ -143,13 +204,11 @@ def calc_metric_sum_delta_from_file(file, default_data, global_averages, metric_
     numpy.ndarray
         1D array of the summed squared deviations. The number of metrics gets derived from the length of 'global_averages'.
     """
-    dataset = xr.open_dataset(file, engine=engine)
+    with xr.open_dataset(file, engine=engine) as dataset:
+        metrics_data = _flatten_dataset_variables(dataset, metric_names)
 
-    metrics_data = dataset[metric_names].to_array().values.flatten()
-
-    results = calc_metric_sum_delta_from_data(metrics_data, default_data,global_averages)
-    dataset.close()
-
+    results = calc_metric_sum_delta_from_data(metrics_data, default_data, global_averages)
+    print(f"Processed file: {file}, Results: {results}")
     return results
 
 def flatten_results(nested_dict):
@@ -212,12 +271,19 @@ def get_correct_model_runs_delta(denormalized_params, all_verified_params, files
 
     metric_names = get_metrics_names(varNames, box_size)
 
-    default_dataset = xr.open_dataset(default_file, engine=engine)[metric_names].to_array().values.flatten()
-    default_dataset_sst4k = xr.open_dataset(sst4k_default_file, engine=engine)[metric_names].to_array().values.flatten()
+    with xr.open_dataset(default_file, engine=engine) as default_ds:
+        default_dataset = _flatten_dataset_variables(default_ds, metric_names)
+    with xr.open_dataset(sst4k_default_file, engine=engine) as default_ds_sst4k:
+        default_dataset_sst4k = _flatten_dataset_variables(default_ds_sst4k, metric_names)
 
-    
-    E3SM_metric_deltas_sst4k = np.array([calc_metric_sum_delta_from_file(file[0],default_dataset_sst4k,global_averages, metric_names) for file in sst4k_files[idxs]])
-    E3SM_metric_deltas = np.array([calc_metric_sum_delta_from_file(file[0],default_dataset,global_averages, metric_names) for file in files[idxs]])
+    E3SM_metric_deltas_sst4k = np.array([
+        calc_metric_sum_delta_from_file(file[0], default_dataset_sst4k, global_averages, metric_names)
+        for file in sst4k_files[idxs]
+    ])
+    E3SM_metric_deltas = np.array([
+        calc_metric_sum_delta_from_file(file[0], default_dataset, global_averages, metric_names)
+        for file in files[idxs]
+    ])
 
 
     e3sm_res_deltas = np.array([E3SM_metric_deltas, E3SM_metric_deltas_sst4k])
