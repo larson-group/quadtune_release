@@ -4,10 +4,18 @@ https://essopenarchive.org/doi/full/10.22541/essoar.15004390/v1
 Runs multiple constrained optimizations and additional diagnostics (e.g. the expected average ratio of ratios).
 """
 
-
 from concurrent.futures import ProcessPoolExecutor
 
-from optimization import calc_all_A_opt_metrics, calc_all_E_RR, optimize_all, normalize_params, denormalize_params
+from matplotlib import pyplot as plt
+
+from optimization import (
+    calc_all_A_opt_metrics,
+    calc_all_E_RR,
+    evaluate_Quadtune_model,
+    optimize_all,
+    normalize_params,
+    denormalize_params,
+)
 
 from data_io import (
     get_metrics_names,
@@ -17,6 +25,7 @@ from data_io import (
     get_correct_model_runs_delta,
     extract_field_matrices_from_whole,
     flatten_results,
+    get_inv_gamma_for_fields,
 )
 
 from plotting import (
@@ -27,6 +36,7 @@ from plotting import (
     create_cartoon_scatterplot,
     create_shape_vs_scale_plot,
 )
+
 
 
 import numpy as np
@@ -156,7 +166,7 @@ PARAM_IDX_TO_BARPLOT = 1
 
 # Index of parameterset to linearize about
 # e.g. for LWCF: 0 -> R_F_S, 1-> R_F_SL, 2-> R_LS
-PARAM_IDX_TO_LINEARIZE = 2 
+PARAM_IDX_TO_LINEARIZE = 2
 
 # Fields that should be considered in the following computations
 USED_FIELDS = ALL_FIELDS
@@ -166,10 +176,39 @@ COLORS = ["red", "blue", "green"]
 # Configure how many of the optimization results should be used to create map plots
 NUM_PARAMS_TO_MAP_PLOT = 2
 
+EMULATOR_MODEL ="Quadtune"  # "Quadtune" or "GPyTorch"  GPyTorch is experimental and not fully tested
 
-def main(argv = None):
+
+
+#Only import the GPyTorch model if it is actually used, to avoid unnecessary dependencies
+if EMULATOR_MODEL == "GPyTorch":
+    from GP_model import construct_gp_model, construct_train_data, create_torch_evaluator, normalize_data, CombinedGP
+
+
+
+def main(argv=None):
     """
-    Check if everything is correctly defined
+    Executes the main optimization and plotting pipeline to reproduce the 
+    manuscript results.
+
+    Loads sensitivity, curvature, and covariance matrices, optionally processes
+    regional E3SM Perturbed Parameter Ensemble (PPE) NetCDF files, constructs 
+    the emulator models, performs the constrained or unconstrained basin-hopping 
+    optimizations, and generates all diagnostic figures.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        Command-line arguments passed to the parser. If None, uses sys.argv 
+        (default is None).
+
+    Returns
+    -------
+    dict or None
+        If `--testing` is enabled, returns a flattened dictionary containing the 
+        optimized parameter vectors, objective values, and analytical metrics 
+        (R_scale, E_RLS, R_shape, E_RR). Otherwise, saves plots to disk and 
+        returns None.
     """
     args = parse_arguments(argv)
 
@@ -199,6 +238,7 @@ def main(argv = None):
     LOAD_DATA = args.load_data
     CONSTR_OPT = args.constr_opt
     CONSTR_VALUE = args.constr_value
+    USE_COV_MATRIX = args.use_cov_matrix
 
     if args.outdir is None:
         outdir = Path("./")
@@ -231,6 +271,25 @@ def main(argv = None):
 
         PPE_deltas = None
         PPE_deltas_sst4k = None
+
+    """
+    Read Covariance Matrices
+    """
+
+    if USE_COV_MATRIX:
+        try:
+            cov_data = np.load(datapath / "noise_covariance_joint_member1.npz")
+            gamma_joint = cov_data["Gamma_joint"]
+            cov_variables = list(cov_data["variables"])
+        except FileNotFoundError:
+            print("Covariance matrix not found, using identity matrix instead")
+            USE_COV_MATRIX = False
+            cov_variables = []
+    else:
+        
+        print("Using identity matrix instead of covariance matrix")
+        USE_COV_MATRIX = False
+        cov_variables = []
 
     """
     Preprocess data
@@ -313,6 +372,47 @@ def main(argv = None):
         default_dataset.close()
         default_dataset_sst4k.close()
 
+    #Construct Models
+    print("Constructing models...")
+    all_models = {}
+    sst4k_models = {}
+
+
+    if EMULATOR_MODEL == "GPyTorch":
+        X_train_full, y_train_full = construct_train_data(files, params_names=USED_PARAMETER_NAMES, varNames=USED_FIELDS, boxSize=BOX_SIZE)
+
+        X_train_sst4k, y_train_sst4k = construct_train_data(sst4k_files, params_names=USED_PARAMETER_NAMES, varNames=USED_FIELDS, boxSize=BOX_SIZE)
+
+
+        X_train_norm, y_train_norm = normalize_data(X_train_full, default_params, y_train_full, default_data, GLOBAL_AVERAGES_OBS[fields_idxs])
+
+        X_train_sst4k_norm, y_train_sst4k_norm = normalize_data(X_train_sst4k, default_params, y_train_sst4k, default_data_sst4k, GLOBAL_AVERAGES_OBS[fields_idxs]) 
+
+        num_vars = len(USED_FIELDS)
+        chunk_size = y_train_norm.shape[1] // num_vars
+
+
+        for i, field in enumerate(USED_FIELDS):
+            start_idx = i * chunk_size
+            end_idx = (i + 1) * chunk_size
+            
+
+            y_train_split = y_train_norm[:, start_idx:end_idx]
+            sst4k_y_train_split = y_train_sst4k_norm[:, start_idx:end_idx]
+
+            all_models[field] = construct_gp_model(X_train_norm, y_train_split)
+            sst4k_models[field] = construct_gp_model(X_train_sst4k_norm, sst4k_y_train_split)
+
+
+
+    elif EMULATOR_MODEL == "Quadtune":
+
+       for field in USED_FIELDS:
+
+        all_models[field] = lambda dp, f=field: evaluate_Quadtune_model(dp, *all_fields_data[f][:2])
+        sst4k_models[field] = lambda dp, f_sst=field: evaluate_Quadtune_model(dp, *all_fields_data[f_sst][2:])
+
+
     if args.e3sm_results is not None:
         e3sm_result_files = get_filenames(args.e3sm_results, DATAPREFIX)
         sst4k_e3sm_result_files = get_filenames(args.e3sm_results_sst4k, DATAPREFIX)
@@ -329,42 +429,115 @@ def main(argv = None):
 
     optimizer_bounds = list(zip(normlzd_low_params, normlzd_high_params))
 
+
     """
     Optimize ratios
     """
     all_optimizations = {}
+    if USE_COV_MATRIX:
+        inv_gamma_dict = {
+            field: get_inv_gamma_for_fields(gamma_joint, cov_variables, [field], BOX_SIZE)
+            for field in USED_FIELDS
+        }
+        inv_gamma_combined_dict = {
+            field: get_inv_gamma_for_fields(gamma_joint, cov_variables, [BASE_FIELD, field], BOX_SIZE)
+            for field in USED_FIELDS if field != BASE_FIELD
+        }
+        inv_gamma_base = inv_gamma_dict[BASE_FIELD]
+    else:
+        inv_gamma_dict = None
+        inv_gamma_combined_dict = None
+        inv_gamma_base = None
 
     for current_field in USED_FIELDS:
         if current_field == BASE_FIELD:
             continue
+        PD_base_model = all_models[BASE_FIELD]
+        PD_constr_model = all_models[current_field]
+        F_base_model = sst4k_models[BASE_FIELD]
+        if USE_COV_MATRIX:
+            inv_gamma_constr = inv_gamma_dict[current_field]
+            inv_gamma_combined = inv_gamma_combined_dict[current_field]
+        else:
+            inv_gamma_constr = None
+            inv_gamma_combined = None   
+
+        if EMULATOR_MODEL == "Quadtune":
+            combined_PD_SensMatrix = np.vstack(
+                    (all_fields_data[BASE_FIELD][0], all_fields_data[current_field][0])
+                )
+            combined_PD_CurvMatrix = np.vstack(
+                    (all_fields_data[BASE_FIELD][1], all_fields_data[current_field][1])
+                )
+
+            PD_combined_model = lambda dp: evaluate_Quadtune_model(
+                    dp, combined_PD_SensMatrix, combined_PD_CurvMatrix
+                )
+        elif EMULATOR_MODEL == "GPyTorch":
+
+            PD_combined_model = CombinedGP(all_models[BASE_FIELD], all_models[current_field])
+
+        else:
+            print(f"Emulator model {EMULATOR_MODEL} not implemented")
+            return
 
         all_optimizations[current_field] = optimize_all(
             BASE_FIELD,
-            *all_fields_data[BASE_FIELD],
             current_field,
-            *all_fields_data[current_field],
+            PD_base_model,
+            F_base_model,
+            PD_constr_model,
+            PD_combined_model,
             optimizer_bounds,
             eps=EPS,
             run_exact_constraint=CONSTR_OPT,
             exact_constr_value=CONSTR_VALUE,
+            inv_gamma_base=inv_gamma_base,
+            inv_gamma_constr=inv_gamma_constr,
+            inv_gamma_combined=inv_gamma_combined,
+            seed=SEED
         )
+
+    np.save(outdir / "all_optimizations.npy", all_optimizations)
+
     """
     In a testing configuration where plots are not needed, the code can be stopped early to minimize the compute time.
     """
     if args.testing:
         flattened_results_dict = flatten_results(all_optimizations)
-        R_scales, E_RLS, R_shapes, _ = calc_all_A_opt_metrics(all_optimizations,USED_FIELDS, BASE_FIELD, all_fields_data, PARAM_IDX_TO_LINEARIZE)
+        R_scales, E_RLS, R_shapes, _ = calc_all_A_opt_metrics(
+            all_optimizations,
+            USED_FIELDS,
+            BASE_FIELD,
+            all_fields_data,
+            PARAM_IDX_TO_LINEARIZE,
+            inv_gamma_dict=inv_gamma_dict
+        )
+
         flattened_results_dict["R_scales"] = np.array(R_scales)
         flattened_results_dict["E_RLS"] = np.array(E_RLS)
         flattened_results_dict["R_shapes"] = np.array(R_shapes)
 
-        #E_RR is defined as an expected ratio of variance ratios as described in Nobre-Wittwer et al. (2026)
-        E_RR = calc_all_E_RR(all_optimizations,USED_FIELDS, BASE_FIELD, all_fields_data, PARAM_IDX_TO_LINEARIZE)
+        # E_RR is defined as an expected ratio of variance ratios as described in Nobre-Wittwer et al. (2026)
+        E_RR = calc_all_E_RR(
+            all_optimizations,
+            USED_FIELDS,
+            BASE_FIELD,
+            all_fields_data,
+            PARAM_IDX_TO_LINEARIZE,
+            inv_gamma_dict=inv_gamma_dict
+        )
 
         flattened_results_dict["E_RR"] = np.array(E_RR)
 
         return flattened_results_dict
-    
+
+    if EMULATOR_MODEL == "GPyTorch":
+        print("Convert GPyTorch models to eval mode and callable")
+        for field in all_models:
+            all_models[field] = create_torch_evaluator(all_models[field])
+        for field in sst4k_models:
+            sst4k_models[field] = create_torch_evaluator(sst4k_models[field])
 
     """
     Create cartoon scatter
@@ -375,6 +548,7 @@ def main(argv = None):
     cartoon_fig.savefig(
         outdir / "Scatterplot_cartoon.pdf", bbox_inches="tight", dpi=300
     )
+    plt.close(cartoon_fig)
 
     """
     Create scale vs shape plot
@@ -382,13 +556,19 @@ def main(argv = None):
 
     print("Creating scale vs shape plot")
     scale_shape_ax = create_shape_vs_scale_plot(
-        all_optimizations, BASE_FIELD, USED_FIELDS, all_fields_data, colors=COLORS,paramset_idx_to_plot=PARAM_IDX_TO_LINEARIZE
+        all_optimizations,
+        BASE_FIELD,
+        USED_FIELDS,
+        all_fields_data,
+        colors=COLORS,
+        paramset_idx_to_plot=PARAM_IDX_TO_LINEARIZE,
+        inv_gamma_dict=inv_gamma_dict,
     )
     scale_shape_fig = scale_shape_ax.get_figure()
     scale_shape_fig.savefig(
         outdir / "Scale_vs_Shape_Scatter.pdf", bbox_inches="tight", dpi=300
     )
-
+    plt.close(scale_shape_fig)
     """
     Create mapplots
     """
@@ -399,7 +579,8 @@ def main(argv = None):
         fields_idxs,
         USED_FIELDS,
         BASE_FIELD,
-        all_fields_data,
+        all_models,
+        sst4k_models,
         GLOBAL_AVERAGES_OBS,
         BOX_SIZE,
         outdir,
@@ -458,20 +639,20 @@ def main(argv = None):
 
         optimized_results = all_optimizations[current_field]
 
-        optimized_params = np.array(
-            [val[0] for val in list(optimized_results.values())]
-        )[:-1]
-
-        denorm_optimized_params = [
-            denormalize_params(paramset, default_params)
-            for paramset in optimized_params
-        ]
+        
 
         base_field_idx = ALL_FIELDS.index(BASE_FIELD)
 
         current_fields_idxs = [base_field_idx, idx]
 
         if args.e3sm_results is not None:
+            optimized_params = np.array(
+                        [val[0] for val in list(optimized_results.values())]
+                    )[:2]
+            denorm_optimized_params = [
+                denormalize_params(paramset, default_params)
+                for paramset in optimized_params
+            ]
             e3sm_results = get_correct_model_runs_delta(
                 denorm_optimized_params,
                 params_E3SM_runs,
@@ -494,16 +675,33 @@ def main(argv = None):
         else:
             PPE_E3SM_res = None
 
-        ax = make_scatterplot(
-            optimized_results,
-            BASE_FIELD,
-            *all_fields_data[BASE_FIELD],
-            current_field,
-            *all_fields_data[current_field],
-            e3sm_PPE_results=PPE_E3SM_res,
-            e3sm_optimized_results=e3sm_results,
-            constrained_opt=CONSTR_OPT,
-        )
+        if USE_COV_MATRIX:
+            inv_gamma_constr = inv_gamma_dict[current_field]
+            inv_gamma_combined = inv_gamma_combined_dict[current_field]
+        else:
+            inv_gamma_constr = None
+            inv_gamma_combined = None
+
+        if EMULATOR_MODEL == "GPyTorch":
+            ax = make_scatterplot(
+                optimized_results, BASE_FIELD,all_models[BASE_FIELD],
+            sst4k_models[BASE_FIELD], current_field, all_models[current_field],
+            sst4k_models[current_field], e3sm_PPE_results=PPE_E3SM_res,
+            e3sm_optimized_results=e3sm_results, constrained_opt=CONSTR_OPT, constr_value=CONSTR_VALUE,
+            inv_gamma_base=inv_gamma_base,
+            inv_gamma_constr=inv_gamma_constr,
+            inv_gamma_combined=inv_gamma_combined)
+        elif EMULATOR_MODEL == "Quadtune":
+            ax = make_scatterplot(
+                optimized_results, BASE_FIELD,all_models[BASE_FIELD], sst4k_models[BASE_FIELD],
+                current_field, all_models[current_field],
+                sst4k_models[current_field], e3sm_PPE_results=PPE_E3SM_res,
+                e3sm_optimized_results=e3sm_results, constrained_opt=CONSTR_OPT, constr_value=CONSTR_VALUE,
+                PD_base_SensMatrix=all_fields_data[BASE_FIELD][0],PD_base_CurvMatrix=all_fields_data[BASE_FIELD][1],
+                PD_constr_SensMatrix=all_fields_data[current_field][0],PD_constr_CurvMatrix=all_fields_data[current_field][1],
+                inv_gamma_base=inv_gamma_base,
+                inv_gamma_constr=inv_gamma_constr,
+                inv_gamma_combined=inv_gamma_combined)
 
         fig = ax.get_figure()
 
@@ -513,8 +711,25 @@ def main(argv = None):
             bbox_inches="tight",
             dpi=300,
         )
+        plt.close(fig)
+
 
 def parse_arguments(argv=None):
+    """
+    Parses command-line arguments for data paths, optimization modes, and 
+    output configuration.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        List of command-line argument strings to parse. If None, reads from 
+        sys.argv (default is None).
+
+    Returns
+    -------
+    argparse.Namespace
+        Populated namespace containing all parsed configuration flags and file paths.
+    """
     parser = argparse.ArgumentParser(argv)
 
     parser.add_argument(
@@ -589,11 +804,20 @@ def parse_arguments(argv=None):
         action="store_true",
         default=False,
         required=False,
-        help="Only run the optimizations and return the results for automatic testing"
+        help="Only run the optimizations and return the results for automatic testing",
+    )
+
+    parser.add_argument(
+        "--use_cov_matrix",
+        action="store_true",
+        default=False,
+        required=False,
+        help="Use a spatial covariance matrix within the calculations",
     )
 
     args = parser.parse_args(argv)
     return args
+
 
 if __name__ == "__main__":
     main()
